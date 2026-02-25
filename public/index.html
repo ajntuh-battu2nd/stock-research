@@ -8,163 +8,257 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #0d1117;
-      color: #e6edf3;
-      min-height: 100vh;
-      padding: 24px 16px;
+      background: #0d1117; color: #e6edf3;
+      min-height: 100vh; padding: 24px 16px;
     }
-    .container { max-width: 860px; margin: 0 auto; }
-    h1 { font-size: 1.2rem; color: #8b949e; margin-bottom: 20px; font-weight: 400; }
+    .container { max-width: 880px; margin: 0 auto; }
 
-    /* Stock list */
-    .stock-list { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 28px; }
+    /* Header */
+    .top { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; flex-wrap: wrap; }
+    .app-title { font-size: 1.1rem; font-weight: 700; color: #58a6ff; white-space: nowrap; }
+    .search-wrap { display: flex; gap: 8px; flex: 1; min-width: 220px; }
+    .search-wrap input {
+      flex: 1; background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+      color: #e6edf3; font-size: 0.95rem; padding: 9px 14px; outline: none;
+      text-transform: uppercase; letter-spacing: 1px;
+      transition: border-color .15s;
+    }
+    .search-wrap input:focus { border-color: #58a6ff; }
+    .search-wrap input::placeholder { text-transform: none; letter-spacing: 0; color: #484f58; }
+    .btn-search {
+      background: #1f6feb; border: none; border-radius: 8px; color: #fff;
+      font-size: 0.9rem; font-weight: 600; padding: 9px 20px; cursor: pointer;
+      transition: background .15s; white-space: nowrap;
+    }
+    .btn-search:hover { background: #388bfd; }
+    .btn-search:disabled { background: #21262d; color: #484f58; cursor: default; }
+
+    /* Saved chips */
+    .saved-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .08em; color: #484f58; margin-bottom: 8px; }
+    .stock-list { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; min-height: 20px; }
     .stock-btn {
       background: #161b22; border: 1px solid #30363d; border-radius: 8px;
-      padding: 10px 18px; cursor: pointer; transition: border-color .15s;
-      text-align: left; min-width: 120px;
+      padding: 8px 14px; cursor: pointer; transition: border-color .15s; text-align: left;
     }
     .stock-btn:hover { border-color: #58a6ff; }
     .stock-btn.active { border-color: #58a6ff; background: #1c2333; }
-    .stock-btn .sym { font-size: 1rem; font-weight: 700; }
-    .stock-btn .price { font-size: 0.8rem; color: #8b949e; margin-top: 2px; }
-    .stock-btn .chg { font-size: 0.75rem; margin-top: 1px; }
+    .stock-btn .sym { font-size: 0.9rem; font-weight: 700; }
+    .stock-btn .s-price { font-size: 0.75rem; color: #8b949e; margin-top: 1px; }
+    .stock-btn .s-chg  { font-size: 0.7rem; margin-top: 1px; }
     .pos { color: #3fb950; } .neg { color: #f85149; }
 
     /* Detail */
-    header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
-    .ticker { font-size: 1.8rem; font-weight: 700; }
+    #detail { display: none; }
+    #detail.visible { display: block; }
+    .d-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+    .ticker { font-size: 1.7rem; font-weight: 700; }
     .badge { padding: 5px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; }
     .badge.BULLISH { background: #1a4731; color: #3fb950; border: 1px solid #3fb950; }
     .badge.BEARISH { background: #4a1320; color: #f85149; border: 1px solid #f85149; }
     .badge.NEUTRAL  { background: #2d2f35; color: #8b949e; border: 1px solid #8b949e; }
-    .price-row { font-size: 2.2rem; font-weight: 700; margin-bottom: 4px; }
-    .price-change { font-size: 0.95rem; margin-bottom: 20px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-bottom: 18px; }
+    .price-big { font-size: 2rem; font-weight: 700; margin-bottom: 3px; }
+    .price-chg { font-size: 0.9rem; margin-bottom: 18px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(205px, 1fr)); gap: 12px; margin-bottom: 16px; }
     .card { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 14px; }
-    .card-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .08em; color: #8b949e; margin-bottom: 9px; }
-    .metric { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
-    .metric-label { font-size: 0.82rem; color: #8b949e; }
-    .metric-value { font-size: 0.88rem; font-weight: 600; }
-    hr.dim { border: none; border-top: 1px solid #30363d; margin: 8px 0; }
+    .card-title { font-size: 0.71rem; text-transform: uppercase; letter-spacing: .08em; color: #8b949e; margin-bottom: 9px; }
+    .metric { display: flex; justify-content: space-between; padding: 3px 0; }
+    .ml { font-size: 0.81rem; color: #8b949e; }
+    .mv { font-size: 0.87rem; font-weight: 600; }
+    hr.dim { border: none; border-top: 1px solid #21262d; margin: 8px 0; }
     .rsi-bar { width: 100%; height: 8px; background: #21262d; border-radius: 4px; margin-top: 8px; position: relative; overflow: hidden; }
-    .rsi-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #3fb950, #f0c000, #f85149); width: 100%; }
-    .rsi-marker { position: absolute; top: -3px; width: 2px; height: 14px; background: white; border-radius: 1px; transform: translateX(-50%); }
-    .signals { margin-bottom: 18px; }
-    .signal-item { display: flex; align-items: center; gap: 10px; padding: 7px 12px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; margin-bottom: 7px; font-size: 0.86rem; }
-    .signal-dot { width: 8px; height: 8px; border-radius: 50%; background: #3fb950; flex-shrink: 0; }
-    .signal-dot.warn { background: #f0c000; }
-    .signal-dot.bear { background: #f85149; }
-    footer { font-size: 0.72rem; color: #484f58; text-align: center; margin-top: 20px; }
-    .loading { text-align: center; padding: 40px; color: #8b949e; }
-    #detail { display: none; }
-    #detail.visible { display: block; }
+    .rsi-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #3fb950 0%, #f0c000 50%, #f85149 100%); width: 100%; }
+    .rsi-marker { position: absolute; top: -3px; width: 2px; height: 14px; background: #fff; border-radius: 1px; transform: translateX(-50%); }
+    .signals { margin-bottom: 16px; }
+    .sig { display: flex; align-items: center; gap: 9px; padding: 7px 12px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; margin-bottom: 7px; font-size: 0.85rem; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: #3fb950; }
+    .dot.warn { background: #f0c000; }
+    .dot.bear { background: #f85149; }
+    footer { font-size: 0.7rem; color: #484f58; text-align: center; margin-top: 18px; }
+
+    /* States */
+    .spinner { text-align: center; padding: 48px; color: #8b949e; }
+    .spinner::after { content: ''; display: inline-block; width: 22px; height: 22px; border: 3px solid #30363d; border-top-color: #58a6ff; border-radius: 50%; animation: spin .7s linear infinite; margin-left: 10px; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .err-msg { background: #4a1320; border: 1px solid #f85149; border-radius: 8px; padding: 14px 18px; color: #f85149; margin-bottom: 16px; font-size: 0.9rem; }
   </style>
 </head>
 <body>
 <div class="container">
-  <h1>Technical Analysis</h1>
-  <div class="stock-list" id="stockList"><div class="loading">Loading…</div></div>
+  <div class="top">
+    <div class="app-title">📈 StockAnalysis</div>
+    <div class="search-wrap">
+      <input id="symInput" type="text" placeholder="Enter symbol (e.g. AAPL)" maxlength="10" />
+      <button class="btn-search" id="searchBtn" onclick="search()">Analyze</button>
+    </div>
+  </div>
+
+  <div class="saved-label">Saved</div>
+  <div class="stock-list" id="stockList"></div>
   <div id="detail"></div>
 </div>
+
 <script>
 const PROJECT = 'stock-research-9eee9';
-const SYMBOLS = ['NVDA', 'CRWD'];
+const SAVED = ['NVDA', 'CRWD'];
 const cache = {};
+let activeSymbol = null;
 
+// ── Firestore helpers ──────────────────────────────────────────────────────
 function fromFS(v) {
-  if ('nullValue' in v) return null;
-  if ('booleanValue' in v) return v.booleanValue;
+  if ('nullValue'   in v) return null;
+  if ('booleanValue'in v) return v.booleanValue;
   if ('doubleValue' in v) return v.doubleValue;
-  if ('integerValue' in v) return Number(v.integerValue);
+  if ('integerValue'in v) return Number(v.integerValue);
   if ('stringValue' in v) return v.stringValue;
-  if ('arrayValue' in v) return (v.arrayValue.values || []).map(fromFS);
-  if ('mapValue' in v) { const o={}; for(const [k,fv] of Object.entries(v.mapValue.fields||{})) o[k]=fromFS(fv); return o; }
+  if ('arrayValue'  in v) return (v.arrayValue.values||[]).map(fromFS);
+  if ('mapValue'    in v) {
+    const o={};
+    for(const [k,fv] of Object.entries(v.mapValue.fields||{})) o[k]=fromFS(fv);
+    return o;
+  }
   return null;
 }
 
-function fmt(n, d=2) { return n==null?'N/A':Number(n).toFixed(d); }
-function fmtBig(n) { if(n==null)return'N/A'; if(n>=1e9)return(n/1e9).toFixed(2)+'B'; if(n>=1e6)return(n/1e6).toFixed(1)+'M'; return n.toLocaleString(); }
-
-async function loadSymbol(sym) {
-  if (cache[sym]) return cache[sym];
+async function loadFromFirestore(sym) {
   const url = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/technicalAnalysis/${sym}`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error('HTTP '+res.status);
+  if (!res.ok) return null;
   const doc = await res.json();
-  const d = {};
-  for (const [k,v] of Object.entries(doc.fields)) d[k] = fromFS(v);
-  cache[sym] = d;
+  if (!doc.fields) return null;
+  const d={};
+  for(const [k,v] of Object.entries(doc.fields)) d[k]=fromFS(v);
   return d;
 }
 
-async function buildList() {
-  const list = document.getElementById('stockList');
-  list.innerHTML = '';
-  const all = await Promise.all(SYMBOLS.map(s => loadSymbol(s).catch(() => null)));
-  all.forEach((d, i) => {
-    if (!d) return;
-    const sym = SYMBOLS[i];
-    const pos = d.price.change >= 0;
-    const btn = document.createElement('button');
-    btn.className = 'stock-btn';
-    btn.dataset.sym = sym;
-    btn.innerHTML = `
-      <div class="sym">${sym}</div>
-      <div class="price">$${fmt(d.price.current)}</div>
-      <div class="chg ${pos?'pos':'neg'}">${pos?'▲':'▼'} ${fmt(Math.abs(d.price.change))} (${fmt(Math.abs(d.price.changePct))}%)</div>
-    `;
-    btn.onclick = () => showDetail(sym);
-    list.appendChild(btn);
-  });
-  // Show first by default
-  if (SYMBOLS[0]) showDetail(SYMBOLS[0]);
+// ── Yahoo Finance via CORS proxy ───────────────────────────────────────────
+async function fetchFromYahoo(sym) {
+  const yhUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=1y`;
+  const proxy = 'https://corsproxy.io/?url=' + encodeURIComponent(yhUrl);
+  const res = await fetch(proxy);
+  if (!res.ok) throw new Error(`Yahoo Finance returned HTTP ${res.status}`);
+  const json = await res.json();
+  const result = json?.chart?.result?.[0];
+  if (!result) throw new Error('Symbol not found or no data returned');
+  return result;
 }
 
-function showDetail(sym) {
-  document.querySelectorAll('.stock-btn').forEach(b => b.classList.toggle('active', b.dataset.sym === sym));
-  const d = cache[sym];
-  if (!d) return;
-  const detail = document.getElementById('detail');
-  detail.className = 'visible';
-  const pos = d.price.change >= 0;
-  const rsiPct = Math.min(Math.max(d.rsi, 0), 100);
-  const updatedAt = d.generatedAt ? new Date(d.generatedAt).toLocaleString('en-US',{
-    timeZone:'America/Los_Angeles',month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true
-  })+' PST' : '';
+// ── Technical analysis ─────────────────────────────────────────────────────
+function computeAnalysis(sym, result) {
+  const meta = result.meta;
+  const q = result.indicators.quote[0];
+  const raw = q.close.map((c,i)=>({c,h:q.high[i],l:q.low[i],v:q.volume[i]})).filter(x=>x.c!=null);
+  const c = raw.map(x=>x.c), v = raw.map(x=>x.v);
 
-  const dotClass = (s) => s.includes('bearish')||s.includes('death')||s.includes('overbought') ? 'bear'
-    : s.includes('oversold') ? 'warn' : '';
+  const sma = (arr,n) => arr.length<n ? null : arr.slice(-n).reduce((a,b)=>a+b,0)/n;
+  function ema(arr,n) {
+    const k=2/(n+1), r=[arr[0]];
+    for(let i=1;i<arr.length;i++) r.push(arr[i]*k+r[i-1]*(1-k));
+    return r;
+  }
 
-  detail.innerHTML = `
-    <header>
-      <div class="ticker">${sym}</div>
+  // RSI 14
+  const gains=[], losses=[];
+  for(let i=1;i<c.length;i++){const d=c[i]-c[i-1];gains.push(d>0?d:0);losses.push(d<0?-d:0);}
+  const ag=gains.slice(-14).reduce((a,b)=>a+b,0)/14;
+  const al=losses.slice(-14).reduce((a,b)=>a+b,0)/14;
+  const rsi = al===0?100:100-100/(1+ag/al);
+
+  // MACD
+  const e12=ema(c,12),e26=ema(c,26);
+  const macdArr=e12.map((v,i)=>v-e26[i]);
+  const sig=ema(macdArr,9);
+  const macdLine=macdArr[macdArr.length-1], signal=sig[sig.length-1], histogram=macdLine-signal;
+
+  // Bollinger
+  const s20=sma(c,20);
+  const std20=Math.sqrt(c.slice(-20).reduce((a,b)=>a+Math.pow(b-s20,2),0)/20);
+  const bb_upper=s20+2*std20, bb_lower=s20-2*std20;
+
+  const s50=sma(c,50), s200=sma(c,200);
+  const avg20v=v.slice(-20).reduce((a,b)=>a+b,0)/20;
+  const high52=Math.max(...raw.map(x=>x.h).filter(Boolean));
+  const low52=Math.min(...raw.map(x=>x.l).filter(Boolean));
+
+  const current=meta.regularMarketPrice??c[c.length-1];
+  const prevClose=meta.previousClose??c[c.length-2];
+  const change=current-prevClose;
+
+  const signals=[];
+  if(current>s20) signals.push('Price above 20-day MA (bullish)');
+  else signals.push('Price below 20-day MA (bearish)');
+  if(s50&&s20>s50) signals.push('20 MA above 50 MA (golden cross zone)');
+  else if(s50) signals.push('20 MA below 50 MA (death cross zone)');
+  if(rsi>70) signals.push('RSI overbought (>70)');
+  else if(rsi<30) signals.push('RSI oversold (<30)');
+  else signals.push(`RSI neutral (${rsi.toFixed(1)})`);
+  signals.push(histogram>0?'MACD bullish crossover':'MACD bearish crossover');
+  if(current>=bb_upper) signals.push('Price above upper Bollinger Band');
+  else if(current<=bb_lower) signals.push('Price below lower Bollinger Band');
+  else signals.push('Price within Bollinger Bands');
+
+  const bull=signals.filter(s=>s.includes('bullish')||s.includes('golden')).length;
+  const bear=signals.filter(s=>s.includes('bearish')||s.includes('death')||s.includes('overbought')).length;
+
+  return {
+    symbol: sym, generatedAt: new Date().toISOString(),
+    price:{current,change,changePct:(change/prevClose)*100,
+      open:meta.regularMarketOpen??c[c.length-1],
+      high:meta.regularMarketDayHigh??raw[raw.length-1].h,
+      low:meta.regularMarketDayLow??raw[raw.length-1].l},
+    movingAverages:{sma20:s20,sma50:s50??null,sma200:s200??null},
+    rsi, macd:{macdLine,signal,histogram},
+    bollingerBands:{upper:bb_upper,middle:s20,lower:bb_lower},
+    volume:{today:v[v.length-1],avg20:avg20v,ratio:v[v.length-1]/avg20v},
+    yearRange:{high52,low52,pctFromHigh:((current-high52)/high52)*100},
+    signals, overall: bull>bear?'BULLISH':bear>bull?'BEARISH':'NEUTRAL',
+  };
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function fmt(n,d=2){return n==null?'N/A':Number(n).toFixed(d);}
+function fmtBig(n){if(n==null)return'N/A';if(n>=1e9)return(n/1e9).toFixed(2)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';return n.toLocaleString();}
+
+function renderDetail(d) {
+  const pos=d.price.change>=0;
+  const rsiPct=Math.min(Math.max(d.rsi,0),100);
+  const updatedAt=d.generatedAt?new Date(d.generatedAt).toLocaleString('en-US',{
+    timeZone:'America/Los_Angeles',month:'short',day:'numeric',year:'numeric',
+    hour:'numeric',minute:'2-digit',hour12:true})+' PST':'';
+  const dotClass=s=>s.includes('bearish')||s.includes('death')||s.includes('overbought')?'bear'
+    :s.includes('oversold')?'warn':'';
+
+  const det=document.getElementById('detail');
+  det.className='visible';
+  det.innerHTML=`
+    <div class="d-header">
+      <div class="ticker">${d.symbol}</div>
       <span class="badge ${d.overall}">${d.overall}</span>
-    </header>
-    <div class="price-row">$${fmt(d.price.current)}</div>
-    <div class="price-change ${pos?'pos':'neg'}">${pos?'▲':'▼'} ${fmt(Math.abs(d.price.change))} (${fmt(Math.abs(d.price.changePct))}%) today</div>
+    </div>
+    <div class="price-big">$${fmt(d.price.current)}</div>
+    <div class="price-chg ${pos?'pos':'neg'}">${pos?'▲':'▼'} ${fmt(Math.abs(d.price.change))} (${fmt(Math.abs(d.price.changePct))}%) today</div>
     <div class="grid">
       <div class="card">
         <div class="card-title">Price Levels</div>
-        <div class="metric"><span class="metric-label">Open</span><span class="metric-value">$${fmt(d.price.open)}</span></div>
-        <div class="metric"><span class="metric-label">High</span><span class="metric-value">$${fmt(d.price.high)}</span></div>
-        <div class="metric"><span class="metric-label">Low</span><span class="metric-value">$${fmt(d.price.low)}</span></div>
-        <div class="metric"><span class="metric-label">52W High</span><span class="metric-value">$${fmt(d.yearRange.high52)}</span></div>
-        <div class="metric"><span class="metric-label">52W Low</span><span class="metric-value">$${fmt(d.yearRange.low52)}</span></div>
-        <div class="metric"><span class="metric-label">From 52W High</span><span class="metric-value neg">${fmt(d.yearRange.pctFromHigh)}%</span></div>
+        <div class="metric"><span class="ml">Open</span><span class="mv">$${fmt(d.price.open)}</span></div>
+        <div class="metric"><span class="ml">High</span><span class="mv">$${fmt(d.price.high)}</span></div>
+        <div class="metric"><span class="ml">Low</span><span class="mv">$${fmt(d.price.low)}</span></div>
+        <div class="metric"><span class="ml">52W High</span><span class="mv">$${fmt(d.yearRange.high52)}</span></div>
+        <div class="metric"><span class="ml">52W Low</span><span class="mv">$${fmt(d.yearRange.low52)}</span></div>
+        <div class="metric"><span class="ml">From 52W High</span><span class="mv neg">${fmt(d.yearRange.pctFromHigh)}%</span></div>
       </div>
       <div class="card">
         <div class="card-title">Moving Averages</div>
-        <div class="metric"><span class="metric-label">SMA 20</span><span class="metric-value">$${fmt(d.movingAverages.sma20)}</span></div>
-        <div class="metric"><span class="metric-label">SMA 50</span><span class="metric-value">$${fmt(d.movingAverages.sma50)}</span></div>
-        <div class="metric"><span class="metric-label">SMA 200</span><span class="metric-value">${d.movingAverages.sma200!=null?'$'+fmt(d.movingAverages.sma200):'N/A'}</span></div>
+        <div class="metric"><span class="ml">SMA 20</span><span class="mv">$${fmt(d.movingAverages.sma20)}</span></div>
+        <div class="metric"><span class="ml">SMA 50</span><span class="mv">$${fmt(d.movingAverages.sma50)}</span></div>
+        <div class="metric"><span class="ml">SMA 200</span><span class="mv">${d.movingAverages.sma200!=null?'$'+fmt(d.movingAverages.sma200):'N/A'}</span></div>
         <hr class="dim"/>
         <div class="card-title">Bollinger Bands</div>
-        <div class="metric"><span class="metric-label">Upper</span><span class="metric-value">$${fmt(d.bollingerBands.upper)}</span></div>
-        <div class="metric"><span class="metric-label">Middle</span><span class="metric-value">$${fmt(d.bollingerBands.middle)}</span></div>
-        <div class="metric"><span class="metric-label">Lower</span><span class="metric-value">$${fmt(d.bollingerBands.lower)}</span></div>
+        <div class="metric"><span class="ml">Upper</span><span class="mv">$${fmt(d.bollingerBands.upper)}</span></div>
+        <div class="metric"><span class="ml">Middle</span><span class="mv">$${fmt(d.bollingerBands.middle)}</span></div>
+        <div class="metric"><span class="ml">Lower</span><span class="mv">$${fmt(d.bollingerBands.lower)}</span></div>
       </div>
       <div class="card">
-        <div class="card-title">RSI (14) — ${fmt(d.rsi,1)}</div>
+        <div class="card-title">RSI (14)</div>
         <div style="font-size:1.8rem;font-weight:700;margin-bottom:6px">${fmt(d.rsi,1)}
           <span style="font-size:0.75rem;font-weight:400;color:${d.rsi>70?'#f0c000':d.rsi<30?'#58a6ff':'#8b949e'}">${d.rsi>70?'Overbought':d.rsi<30?'Oversold':'Neutral'}</span>
         </div>
@@ -172,26 +266,97 @@ function showDetail(sym) {
         <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:#484f58;margin-top:4px"><span>0</span><span>30</span><span>70</span><span>100</span></div>
         <hr class="dim"/>
         <div class="card-title">MACD</div>
-        <div class="metric"><span class="metric-label">MACD</span><span class="metric-value ${d.macd.macdLine>=0?'pos':'neg'}">${fmt(d.macd.macdLine,4)}</span></div>
-        <div class="metric"><span class="metric-label">Signal</span><span class="metric-value">${fmt(d.macd.signal,4)}</span></div>
-        <div class="metric"><span class="metric-label">Histogram</span><span class="metric-value ${d.macd.histogram>=0?'pos':'neg'}">${fmt(d.macd.histogram,4)}</span></div>
+        <div class="metric"><span class="ml">MACD</span><span class="mv ${d.macd.macdLine>=0?'pos':'neg'}">${fmt(d.macd.macdLine,4)}</span></div>
+        <div class="metric"><span class="ml">Signal</span><span class="mv">${fmt(d.macd.signal,4)}</span></div>
+        <div class="metric"><span class="ml">Histogram</span><span class="mv ${d.macd.histogram>=0?'pos':'neg'}">${fmt(d.macd.histogram,4)}</span></div>
       </div>
       <div class="card">
         <div class="card-title">Volume</div>
-        <div class="metric"><span class="metric-label">Today</span><span class="metric-value">${fmtBig(d.volume.today)}</span></div>
-        <div class="metric"><span class="metric-label">20D Avg</span><span class="metric-value">${fmtBig(d.volume.avg20)}</span></div>
-        <div class="metric"><span class="metric-label">Ratio</span><span class="metric-value ${d.volume.ratio>=1?'pos':'neg'}">${fmt(d.volume.ratio,2)}x</span></div>
+        <div class="metric"><span class="ml">Today</span><span class="mv">${fmtBig(d.volume.today)}</span></div>
+        <div class="metric"><span class="ml">20D Avg</span><span class="mv">${fmtBig(d.volume.avg20)}</span></div>
+        <div class="metric"><span class="ml">Ratio</span><span class="mv ${d.volume.ratio>=1?'pos':'neg'}">${fmt(d.volume.ratio,2)}x</span></div>
       </div>
     </div>
     <div class="signals">
       <div class="card-title" style="margin-bottom:9px">Signals</div>
-      ${(d.signals||[]).map(s=>`<div class="signal-item"><span class="signal-dot ${dotClass(s)}"></span><span>${s}</span></div>`).join('')}
+      ${(d.signals||[]).map(s=>`<div class="sig"><span class="dot ${dotClass(s)}"></span><span>${s}</span></div>`).join('')}
     </div>
     <footer>Updated: ${updatedAt} &nbsp;·&nbsp; Yahoo Finance &nbsp;·&nbsp; Not financial advice</footer>
   `;
 }
 
-buildList();
+function setActive(sym) {
+  activeSymbol = sym;
+  document.querySelectorAll('.stock-btn').forEach(b=>b.classList.toggle('active', b.dataset.sym===sym));
+}
+
+function addSavedChip(d) {
+  const sym = d.symbol;
+  if (document.querySelector(`.stock-btn[data-sym="${sym}"]`)) return;
+  const pos = d.price.change >= 0;
+  const btn = document.createElement('button');
+  btn.className = 'stock-btn';
+  btn.dataset.sym = sym;
+  btn.innerHTML = `
+    <div class="sym">${sym}</div>
+    <div class="s-price">$${fmt(d.price.current)}</div>
+    <div class="s-chg ${pos?'pos':'neg'}">${pos?'▲':'▼'} ${fmt(Math.abs(d.price.changePct))}%</div>
+  `;
+  btn.onclick = () => { setActive(sym); renderDetail(cache[sym]); };
+  document.getElementById('stockList').appendChild(btn);
+}
+
+// ── Search ─────────────────────────────────────────────────────────────────
+async function search() {
+  const input = document.getElementById('symInput');
+  const btn = document.getElementById('searchBtn');
+  const sym = input.value.trim().toUpperCase();
+  if (!sym) return;
+
+  // Already cached
+  if (cache[sym]) { setActive(sym); renderDetail(cache[sym]); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Loading…';
+  document.getElementById('detail').className = 'visible';
+  document.getElementById('detail').innerHTML = `<div class="spinner">Analyzing ${sym}</div>`;
+
+  try {
+    // Try Firestore first (pre-computed), else fetch live
+    let d = await loadFromFirestore(sym);
+    if (!d) {
+      const result = await fetchFromYahoo(sym);
+      d = computeAnalysis(sym, result);
+    }
+    cache[sym] = d;
+    addSavedChip(d);
+    setActive(sym);
+    renderDetail(d);
+    input.value = '';
+  } catch(e) {
+    document.getElementById('detail').innerHTML = `<div class="err-msg">Could not load <strong>${sym}</strong>: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Analyze';
+  }
+}
+
+// Enter key
+document.getElementById('symInput').addEventListener('keydown', e => { if(e.key==='Enter') search(); });
+// Auto-uppercase as you type
+document.getElementById('symInput').addEventListener('input', e => { const p=e.target.selectionStart; e.target.value=e.target.value.toUpperCase(); e.target.setSelectionRange(p,p); });
+
+// ── Boot: load saved symbols from Firestore ────────────────────────────────
+(async () => {
+  await Promise.all(SAVED.map(async sym => {
+    try {
+      const d = await loadFromFirestore(sym);
+      if (d) { cache[sym] = d; addSavedChip(d); }
+    } catch(_) {}
+  }));
+  // Show first saved
+  if (SAVED[0] && cache[SAVED[0]]) { setActive(SAVED[0]); renderDetail(cache[SAVED[0]]); }
+})();
 </script>
 </body>
 </html>
