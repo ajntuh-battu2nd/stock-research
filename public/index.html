@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NVDA Technical Analysis</title>
+  <title>Stock Technical Analysis</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -13,239 +13,185 @@
       min-height: 100vh;
       padding: 24px 16px;
     }
-    .container { max-width: 800px; margin: 0 auto; }
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-      gap: 12px;
+    .container { max-width: 860px; margin: 0 auto; }
+    h1 { font-size: 1.2rem; color: #8b949e; margin-bottom: 20px; font-weight: 400; }
+
+    /* Stock list */
+    .stock-list { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 28px; }
+    .stock-btn {
+      background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+      padding: 10px 18px; cursor: pointer; transition: border-color .15s;
+      text-align: left; min-width: 120px;
     }
-    .ticker { font-size: 2rem; font-weight: 700; letter-spacing: 1px; }
-    .badge {
-      padding: 6px 16px;
-      border-radius: 20px;
-      font-weight: 700;
-      font-size: 0.9rem;
-      text-transform: uppercase;
-    }
+    .stock-btn:hover { border-color: #58a6ff; }
+    .stock-btn.active { border-color: #58a6ff; background: #1c2333; }
+    .stock-btn .sym { font-size: 1rem; font-weight: 700; }
+    .stock-btn .price { font-size: 0.8rem; color: #8b949e; margin-top: 2px; }
+    .stock-btn .chg { font-size: 0.75rem; margin-top: 1px; }
+    .pos { color: #3fb950; } .neg { color: #f85149; }
+
+    /* Detail */
+    header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+    .ticker { font-size: 1.8rem; font-weight: 700; }
+    .badge { padding: 5px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; }
     .badge.BULLISH { background: #1a4731; color: #3fb950; border: 1px solid #3fb950; }
     .badge.BEARISH { background: #4a1320; color: #f85149; border: 1px solid #f85149; }
-    .badge.NEUTRAL { background: #2d2f35; color: #8b949e; border: 1px solid #8b949e; }
-    .price-row {
-      font-size: 2.4rem;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-    .price-change { font-size: 1rem; margin-bottom: 24px; }
-    .pos { color: #3fb950; }
-    .neg { color: #f85149; }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
-      margin-bottom: 20px;
-    }
-    .card {
-      background: #161b22;
-      border: 1px solid #30363d;
-      border-radius: 10px;
-      padding: 16px;
-    }
-    .card-title {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #8b949e;
-      margin-bottom: 10px;
-    }
-    .metric { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
-    .metric-label { font-size: 0.85rem; color: #8b949e; }
-    .metric-value { font-size: 0.9rem; font-weight: 600; }
-    .rsi-bar {
-      width: 100%;
-      height: 8px;
-      background: #21262d;
-      border-radius: 4px;
-      margin-top: 8px;
-      position: relative;
-      overflow: hidden;
-    }
-    .rsi-fill {
-      height: 100%;
-      border-radius: 4px;
-      background: linear-gradient(90deg, #3fb950, #f0c000, #f85149);
-      width: 100%;
-    }
-    .rsi-marker {
-      position: absolute;
-      top: -3px;
-      width: 2px;
-      height: 14px;
-      background: white;
-      border-radius: 1px;
-      transform: translateX(-50%);
-    }
-    .signals { margin-bottom: 20px; }
-    .signal-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 12px;
-      background: #161b22;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      margin-bottom: 8px;
-      font-size: 0.88rem;
-    }
-    .signal-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: #3fb950;
-      flex-shrink: 0;
-    }
+    .badge.NEUTRAL  { background: #2d2f35; color: #8b949e; border: 1px solid #8b949e; }
+    .price-row { font-size: 2.2rem; font-weight: 700; margin-bottom: 4px; }
+    .price-change { font-size: 0.95rem; margin-bottom: 20px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-bottom: 18px; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 14px; }
+    .card-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .08em; color: #8b949e; margin-bottom: 9px; }
+    .metric { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
+    .metric-label { font-size: 0.82rem; color: #8b949e; }
+    .metric-value { font-size: 0.88rem; font-weight: 600; }
+    hr.dim { border: none; border-top: 1px solid #30363d; margin: 8px 0; }
+    .rsi-bar { width: 100%; height: 8px; background: #21262d; border-radius: 4px; margin-top: 8px; position: relative; overflow: hidden; }
+    .rsi-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #3fb950, #f0c000, #f85149); width: 100%; }
+    .rsi-marker { position: absolute; top: -3px; width: 2px; height: 14px; background: white; border-radius: 1px; transform: translateX(-50%); }
+    .signals { margin-bottom: 18px; }
+    .signal-item { display: flex; align-items: center; gap: 10px; padding: 7px 12px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; margin-bottom: 7px; font-size: 0.86rem; }
+    .signal-dot { width: 8px; height: 8px; border-radius: 50%; background: #3fb950; flex-shrink: 0; }
     .signal-dot.warn { background: #f0c000; }
-    footer {
-      font-size: 0.75rem;
-      color: #484f58;
-      text-align: center;
-      margin-top: 24px;
-    }
-    .loading { text-align: center; padding: 60px; color: #8b949e; }
-    .error { text-align: center; padding: 60px; color: #f85149; }
+    .signal-dot.bear { background: #f85149; }
+    footer { font-size: 0.72rem; color: #484f58; text-align: center; margin-top: 20px; }
+    .loading { text-align: center; padding: 40px; color: #8b949e; }
+    #detail { display: none; }
+    #detail.visible { display: block; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div id="app"><div class="loading">Loading analysis…</div></div>
-  </div>
-  <script>
-    const PROJECT = 'stock-research-9eee9';
-    const URL = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/technicalAnalysis/NVDA`;
+<div class="container">
+  <h1>Technical Analysis</h1>
+  <div class="stock-list" id="stockList"><div class="loading">Loading…</div></div>
+  <div id="detail"></div>
+</div>
+<script>
+const PROJECT = 'stock-research-9eee9';
+const SYMBOLS = ['NVDA', 'CRWD'];
+const cache = {};
 
-    function fromFirestore(v) {
-      if ('nullValue' in v) return null;
-      if ('booleanValue' in v) return v.booleanValue;
-      if ('doubleValue' in v) return v.doubleValue;
-      if ('integerValue' in v) return Number(v.integerValue);
-      if ('stringValue' in v) return v.stringValue;
-      if ('arrayValue' in v) return (v.arrayValue.values || []).map(fromFirestore);
-      if ('mapValue' in v) {
-        const o = {};
-        for (const [k, fv] of Object.entries(v.mapValue.fields || {})) o[k] = fromFirestore(fv);
-        return o;
-      }
-      return null;
-    }
+function fromFS(v) {
+  if ('nullValue' in v) return null;
+  if ('booleanValue' in v) return v.booleanValue;
+  if ('doubleValue' in v) return v.doubleValue;
+  if ('integerValue' in v) return Number(v.integerValue);
+  if ('stringValue' in v) return v.stringValue;
+  if ('arrayValue' in v) return (v.arrayValue.values || []).map(fromFS);
+  if ('mapValue' in v) { const o={}; for(const [k,fv] of Object.entries(v.mapValue.fields||{})) o[k]=fromFS(fv); return o; }
+  return null;
+}
 
-    function fmt(n, d = 2) { return n == null ? 'N/A' : Number(n).toFixed(d); }
-    function fmtBig(n) { if (n == null) return 'N/A'; if (n >= 1e9) return (n/1e9).toFixed(2)+'B'; if (n >= 1e6) return (n/1e6).toFixed(1)+'M'; return n.toLocaleString(); }
+function fmt(n, d=2) { return n==null?'N/A':Number(n).toFixed(d); }
+function fmtBig(n) { if(n==null)return'N/A'; if(n>=1e9)return(n/1e9).toFixed(2)+'B'; if(n>=1e6)return(n/1e6).toFixed(1)+'M'; return n.toLocaleString(); }
 
-    async function load() {
-      try {
-        const res = await fetch(URL);
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const doc = await res.json();
-        const fields = doc.fields;
-        const d = {};
-        for (const [k, v] of Object.entries(fields)) d[k] = fromFirestore(v);
-        render(d);
-      } catch (e) {
-        document.getElementById('app').innerHTML = `<div class="error">Failed to load: ${e.message}</div>`;
-      }
-    }
+async function loadSymbol(sym) {
+  if (cache[sym]) return cache[sym];
+  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/technicalAnalysis/${sym}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('HTTP '+res.status);
+  const doc = await res.json();
+  const d = {};
+  for (const [k,v] of Object.entries(doc.fields)) d[k] = fromFS(v);
+  cache[sym] = d;
+  return d;
+}
 
-    function render(d) {
-      const chg = d.price.change;
-      const chgPct = d.price.changePct;
-      const pos = chg >= 0;
-      const rsiVal = d.rsi;
-      const rsiPct = Math.min(Math.max(rsiVal, 0), 100);
+async function buildList() {
+  const list = document.getElementById('stockList');
+  list.innerHTML = '';
+  const all = await Promise.all(SYMBOLS.map(s => loadSymbol(s).catch(() => null)));
+  all.forEach((d, i) => {
+    if (!d) return;
+    const sym = SYMBOLS[i];
+    const pos = d.price.change >= 0;
+    const btn = document.createElement('button');
+    btn.className = 'stock-btn';
+    btn.dataset.sym = sym;
+    btn.innerHTML = `
+      <div class="sym">${sym}</div>
+      <div class="price">$${fmt(d.price.current)}</div>
+      <div class="chg ${pos?'pos':'neg'}">${pos?'▲':'▼'} ${fmt(Math.abs(d.price.change))} (${fmt(Math.abs(d.price.changePct))}%)</div>
+    `;
+    btn.onclick = () => showDetail(sym);
+    list.appendChild(btn);
+  });
+  // Show first by default
+  if (SYMBOLS[0]) showDetail(SYMBOLS[0]);
+}
 
-      const signalDot = (s) => {
-        const warn = s.includes('overbought') || s.includes('oversold');
-        return `<span class="signal-dot ${warn ? 'warn' : ''}"></span>`;
-      };
+function showDetail(sym) {
+  document.querySelectorAll('.stock-btn').forEach(b => b.classList.toggle('active', b.dataset.sym === sym));
+  const d = cache[sym];
+  if (!d) return;
+  const detail = document.getElementById('detail');
+  detail.className = 'visible';
+  const pos = d.price.change >= 0;
+  const rsiPct = Math.min(Math.max(d.rsi, 0), 100);
+  const updatedAt = d.generatedAt ? new Date(d.generatedAt).toLocaleString('en-US',{
+    timeZone:'America/Los_Angeles',month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true
+  })+' PST' : '';
 
-      const updatedAt = d.generatedAt ? new Date(d.generatedAt).toLocaleString('en-US', {
-        timeZone: 'America/Los_Angeles', month:'short', day:'numeric',
-        year:'numeric', hour:'numeric', minute:'2-digit', hour12:true
-      }) + ' PST' : '';
+  const dotClass = (s) => s.includes('bearish')||s.includes('death')||s.includes('overbought') ? 'bear'
+    : s.includes('oversold') ? 'warn' : '';
 
-      document.getElementById('app').innerHTML = `
-        <header>
-          <div>
-            <div class="ticker">NVDA <span style="font-size:1rem;color:#8b949e;font-weight:400">· NVIDIA Corporation</span></div>
-          </div>
-          <span class="badge ${d.overall}">${d.overall}</span>
-        </header>
-
-        <div class="price-row">$${fmt(d.price.current)}</div>
-        <div class="price-change ${pos ? 'pos' : 'neg'}">
-          ${pos ? '▲' : '▼'} ${fmt(Math.abs(chg))} (${fmt(Math.abs(chgPct))}%)&nbsp; today
+  detail.innerHTML = `
+    <header>
+      <div class="ticker">${sym}</div>
+      <span class="badge ${d.overall}">${d.overall}</span>
+    </header>
+    <div class="price-row">$${fmt(d.price.current)}</div>
+    <div class="price-change ${pos?'pos':'neg'}">${pos?'▲':'▼'} ${fmt(Math.abs(d.price.change))} (${fmt(Math.abs(d.price.changePct))}%) today</div>
+    <div class="grid">
+      <div class="card">
+        <div class="card-title">Price Levels</div>
+        <div class="metric"><span class="metric-label">Open</span><span class="metric-value">$${fmt(d.price.open)}</span></div>
+        <div class="metric"><span class="metric-label">High</span><span class="metric-value">$${fmt(d.price.high)}</span></div>
+        <div class="metric"><span class="metric-label">Low</span><span class="metric-value">$${fmt(d.price.low)}</span></div>
+        <div class="metric"><span class="metric-label">52W High</span><span class="metric-value">$${fmt(d.yearRange.high52)}</span></div>
+        <div class="metric"><span class="metric-label">52W Low</span><span class="metric-value">$${fmt(d.yearRange.low52)}</span></div>
+        <div class="metric"><span class="metric-label">From 52W High</span><span class="metric-value neg">${fmt(d.yearRange.pctFromHigh)}%</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Moving Averages</div>
+        <div class="metric"><span class="metric-label">SMA 20</span><span class="metric-value">$${fmt(d.movingAverages.sma20)}</span></div>
+        <div class="metric"><span class="metric-label">SMA 50</span><span class="metric-value">$${fmt(d.movingAverages.sma50)}</span></div>
+        <div class="metric"><span class="metric-label">SMA 200</span><span class="metric-value">${d.movingAverages.sma200!=null?'$'+fmt(d.movingAverages.sma200):'N/A'}</span></div>
+        <hr class="dim"/>
+        <div class="card-title">Bollinger Bands</div>
+        <div class="metric"><span class="metric-label">Upper</span><span class="metric-value">$${fmt(d.bollingerBands.upper)}</span></div>
+        <div class="metric"><span class="metric-label">Middle</span><span class="metric-value">$${fmt(d.bollingerBands.middle)}</span></div>
+        <div class="metric"><span class="metric-label">Lower</span><span class="metric-value">$${fmt(d.bollingerBands.lower)}</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">RSI (14) — ${fmt(d.rsi,1)}</div>
+        <div style="font-size:1.8rem;font-weight:700;margin-bottom:6px">${fmt(d.rsi,1)}
+          <span style="font-size:0.75rem;font-weight:400;color:${d.rsi>70?'#f0c000':d.rsi<30?'#58a6ff':'#8b949e'}">${d.rsi>70?'Overbought':d.rsi<30?'Oversold':'Neutral'}</span>
         </div>
+        <div class="rsi-bar"><div class="rsi-fill"></div><div class="rsi-marker" style="left:${rsiPct}%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:#484f58;margin-top:4px"><span>0</span><span>30</span><span>70</span><span>100</span></div>
+        <hr class="dim"/>
+        <div class="card-title">MACD</div>
+        <div class="metric"><span class="metric-label">MACD</span><span class="metric-value ${d.macd.macdLine>=0?'pos':'neg'}">${fmt(d.macd.macdLine,4)}</span></div>
+        <div class="metric"><span class="metric-label">Signal</span><span class="metric-value">${fmt(d.macd.signal,4)}</span></div>
+        <div class="metric"><span class="metric-label">Histogram</span><span class="metric-value ${d.macd.histogram>=0?'pos':'neg'}">${fmt(d.macd.histogram,4)}</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Volume</div>
+        <div class="metric"><span class="metric-label">Today</span><span class="metric-value">${fmtBig(d.volume.today)}</span></div>
+        <div class="metric"><span class="metric-label">20D Avg</span><span class="metric-value">${fmtBig(d.volume.avg20)}</span></div>
+        <div class="metric"><span class="metric-label">Ratio</span><span class="metric-value ${d.volume.ratio>=1?'pos':'neg'}">${fmt(d.volume.ratio,2)}x</span></div>
+      </div>
+    </div>
+    <div class="signals">
+      <div class="card-title" style="margin-bottom:9px">Signals</div>
+      ${(d.signals||[]).map(s=>`<div class="signal-item"><span class="signal-dot ${dotClass(s)}"></span><span>${s}</span></div>`).join('')}
+    </div>
+    <footer>Updated: ${updatedAt} &nbsp;·&nbsp; Yahoo Finance &nbsp;·&nbsp; Not financial advice</footer>
+  `;
+}
 
-        <div class="grid">
-          <div class="card">
-            <div class="card-title">Price Levels</div>
-            <div class="metric"><span class="metric-label">Open</span><span class="metric-value">$${fmt(d.price.open)}</span></div>
-            <div class="metric"><span class="metric-label">High</span><span class="metric-value">$${fmt(d.price.high)}</span></div>
-            <div class="metric"><span class="metric-label">Low</span><span class="metric-value">$${fmt(d.price.low)}</span></div>
-            <div class="metric"><span class="metric-label">52W High</span><span class="metric-value">$${fmt(d.yearRange.high52)}</span></div>
-            <div class="metric"><span class="metric-label">52W Low</span><span class="metric-value">$${fmt(d.yearRange.low52)}</span></div>
-            <div class="metric"><span class="metric-label">From 52W High</span><span class="metric-value neg">${fmt(d.yearRange.pctFromHigh)}%</span></div>
-          </div>
-
-          <div class="card">
-            <div class="card-title">Moving Averages</div>
-            <div class="metric"><span class="metric-label">SMA 20</span><span class="metric-value">$${fmt(d.movingAverages.sma20)}</span></div>
-            <div class="metric"><span class="metric-label">SMA 50</span><span class="metric-value">$${fmt(d.movingAverages.sma50)}</span></div>
-            <div class="metric"><span class="metric-label">SMA 200</span><span class="metric-value">${d.movingAverages.sma200 != null ? '$'+fmt(d.movingAverages.sma200) : 'N/A'}</span></div>
-            <hr style="border-color:#30363d;margin:8px 0"/>
-            <div class="card-title" style="margin-top:4px">Bollinger Bands</div>
-            <div class="metric"><span class="metric-label">Upper</span><span class="metric-value">$${fmt(d.bollingerBands.upper)}</span></div>
-            <div class="metric"><span class="metric-label">Middle</span><span class="metric-value">$${fmt(d.bollingerBands.middle)}</span></div>
-            <div class="metric"><span class="metric-label">Lower</span><span class="metric-value">$${fmt(d.bollingerBands.lower)}</span></div>
-          </div>
-
-          <div class="card">
-            <div class="card-title">RSI (14)</div>
-            <div style="font-size:2rem;font-weight:700;margin-bottom:6px">${fmt(rsiVal, 1)}
-              <span style="font-size:0.8rem;font-weight:400;color:#f0c000">Overbought</span>
-            </div>
-            <div class="rsi-bar">
-              <div class="rsi-fill"></div>
-              <div class="rsi-marker" style="left:${rsiPct}%"></div>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:0.7rem;color:#484f58;margin-top:4px">
-              <span>0 Oversold</span><span>30</span><span>70</span><span>100 Overbought</span>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-title">MACD</div>
-            <div class="metric"><span class="metric-label">MACD Line</span><span class="metric-value ${d.macd.macdLine>=0?'pos':'neg'}">${fmt(d.macd.macdLine, 4)}</span></div>
-            <div class="metric"><span class="metric-label">Signal</span><span class="metric-value">${fmt(d.macd.signal, 4)}</span></div>
-            <div class="metric"><span class="metric-label">Histogram</span><span class="metric-value ${d.macd.histogram>=0?'pos':'neg'}">${fmt(d.macd.histogram, 4)}</span></div>
-            <hr style="border-color:#30363d;margin:8px 0"/>
-            <div class="card-title" style="margin-top:4px">Volume</div>
-            <div class="metric"><span class="metric-label">Today</span><span class="metric-value">${fmtBig(d.volume.today)}</span></div>
-            <div class="metric"><span class="metric-label">20D Avg</span><span class="metric-value">${fmtBig(d.volume.avg20)}</span></div>
-            <div class="metric"><span class="metric-label">Ratio</span><span class="metric-value ${d.volume.ratio>=1?'pos':'neg'}">${fmt(d.volume.ratio, 2)}x</span></div>
-          </div>
-        </div>
-
-        <div class="signals">
-          <div class="card-title" style="margin-bottom:10px">Signals</div>
-          ${(d.signals || []).map(s => `<div class="signal-item">${signalDot(s)}<span>${s}</span></div>`).join('')}
-        </div>
-
-        <footer>Last updated: ${updatedAt} &nbsp;·&nbsp; Data from Yahoo Finance &nbsp;·&nbsp; Not financial advice</footer>
-      `;
-    }
-
-    load();
-  </script>
+buildList();
+</script>
 </body>
 </html>
