@@ -1,5 +1,5 @@
 const PROJECT = 'stock-research-9eee9';
-const SYMBOLS = (Bun.argv[2] ? [Bun.argv[2].toUpperCase()] : ['NVDA', 'CRWD', 'AAPL', 'TSLA', 'SNOW', 'NTAP']);
+const SYMBOLS = (Bun.argv[2] ? [Bun.argv[2].toUpperCase()] : ['NVDA', 'CRWD', 'AAPL', 'TSLA', 'SNOW', 'NTAP', 'DELL']);
 
 // Get access token from service account
 const sa = await Bun.file('C:/Users/user/stock-research/serviceAccount.json').json();
