@@ -363,39 +363,43 @@ Return ONLY valid JSON, no markdown, no explanation:
   "generatedBy": "claude-sonnet-4-6"
 }`;
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 2048,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  });
-
-  if (!res.ok) {
-    console.error(`  Claude API error: ${res.status}`);
-    return null;
-  }
-
-  const json = await res.json() as any;
-  const raw = (json.content?.[0]?.text || '').trim();
-  try {
-    return JSON.parse(raw);
-  } catch {
-    // Strip markdown fences if present
-    const stripped = raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+  for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      return JSON.parse(stripped);
-    } catch(e) {
-      console.error(`  Failed to parse Claude response:`, stripped.slice(0, 200));
-      return null;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 45000);
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'x-api-key': ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 2048,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      });
+      clearTimeout(timeout);
+
+      if (!res.ok) { console.error(`  Claude API error: ${res.status}`); return null; }
+
+      const json = await res.json() as any;
+      const raw = (json.content?.[0]?.text || '').trim();
+      try { return JSON.parse(raw); } catch {
+        const stripped = raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+        try { return JSON.parse(stripped); } catch(e) {
+          console.error(`  Failed to parse Claude response:`, stripped.slice(0, 200));
+          return null;
+        }
+      }
+    } catch (e: any) {
+      if (attempt < 3) { console.log(`  Attempt ${attempt} failed, retrying...`); }
+      else { console.error(`  Claude narrative failed after 3 attempts`); return null; }
     }
   }
+  return null;
 }
 
 for (const symbol of SYMBOLS) {
