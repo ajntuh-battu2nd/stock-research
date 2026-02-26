@@ -133,9 +133,21 @@ async function loadFromFirestore(sym) {
 
 // ── Yahoo Finance via CORS proxy ───────────────────────────────────────────
 const PROXY = 'https://corsproxy.io/?url=';
+let yfCrumb = null;
+
+async function getYfCrumb() {
+  if (yfCrumb) return yfCrumb;
+  try {
+    const res = await fetch(PROXY + encodeURIComponent('https://query2.finance.yahoo.com/v1/test/getcrumb'));
+    if (res.ok) { yfCrumb = await res.text(); }
+  } catch(_) {}
+  return yfCrumb;
+}
 
 async function fetchFromYahoo(sym) {
-  const url = PROXY + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=1y`);
+  const crumb = await getYfCrumb();
+  const crumbParam = crumb ? `&crumb=${encodeURIComponent(crumb)}` : '';
+  const url = PROXY + encodeURIComponent(`https://query2.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=1y${crumbParam}`);
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Yahoo Finance returned HTTP ${res.status}`);
   const json = await res.json();
@@ -146,8 +158,10 @@ async function fetchFromYahoo(sym) {
 
 async function fetchDeepResearchLive(sym) {
   try {
+    const crumb = await getYfCrumb();
+    const crumbParam = crumb ? `&crumb=${encodeURIComponent(crumb)}` : '';
     const url = PROXY + encodeURIComponent(
-      `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${sym}?modules=recommendationTrend,upgradeDowngradeHistory,earningsHistory,calendarEvents,majorHoldersBreakdown,defaultKeyStatistics,financialData`
+      `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${sym}?modules=recommendationTrend,upgradeDowngradeHistory,earningsHistory,calendarEvents,majorHoldersBreakdown,defaultKeyStatistics,financialData${crumbParam}`
     );
     const res = await fetch(url);
     if (!res.ok) return null;
@@ -197,7 +211,9 @@ async function fetchDeepResearchLive(sym) {
 
 async function fetchFundamentalsLive(sym) {
   try {
-    const url = PROXY + encodeURIComponent(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${sym}?modules=defaultKeyStatistics,financialData,summaryDetail,assetProfile`);
+    const crumb = await getYfCrumb();
+    const crumbParam = crumb ? `&crumb=${encodeURIComponent(crumb)}` : '';
+    const url = PROXY + encodeURIComponent(`https://query2.finance.yahoo.com/v10/finance/quoteSummary/${sym}?modules=defaultKeyStatistics,financialData,summaryDetail,assetProfile${crumbParam}`);
     const res = await fetch(url);
     if (!res.ok) return {};
     const json = await res.json();
