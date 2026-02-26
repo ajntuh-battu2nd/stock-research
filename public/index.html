@@ -131,15 +131,43 @@ async function loadFromFirestore(sym) {
 }
 
 // ── Yahoo Finance via CORS proxy ───────────────────────────────────────────
+const PROXY = 'https://corsproxy.io/?url=';
+
 async function fetchFromYahoo(sym) {
-  const yhUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=1y`;
-  const proxy = 'https://corsproxy.io/?url=' + encodeURIComponent(yhUrl);
-  const res = await fetch(proxy);
+  const url = PROXY + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=1y`);
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`Yahoo Finance returned HTTP ${res.status}`);
   const json = await res.json();
   const result = json?.chart?.result?.[0];
   if (!result) throw new Error('Symbol not found or no data returned');
   return result;
+}
+
+async function fetchFundamentalsLive(sym) {
+  try {
+    const url = PROXY + encodeURIComponent(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${sym}?modules=defaultKeyStatistics,financialData,summaryDetail,assetProfile`);
+    const res = await fetch(url);
+    if (!res.ok) return {};
+    const json = await res.json();
+    const r = json?.quoteSummary?.result?.[0];
+    if (!r) return {};
+    const ks = r.defaultKeyStatistics || {};
+    const fd = r.financialData || {};
+    const sd = r.summaryDetail || {};
+    const ap = r.assetProfile || {};
+    const v = (obj, key) => obj?.[key]?.raw ?? obj?.[key] ?? null;
+    return {
+      marketCap: v(sd,'marketCap'), trailingPE: v(sd,'trailingPE'), forwardPE: v(sd,'forwardPE'),
+      priceToBook: v(ks,'priceToBook'), eps: v(ks,'trailingEps'), epsForward: v(ks,'forwardEps'),
+      beta: v(ks,'beta'), dividendYield: v(sd,'dividendYield'), revenue: v(fd,'totalRevenue'),
+      revenueGrowth: v(fd,'revenueGrowth'), grossMargin: v(fd,'grossMargins'),
+      operatingMargin: v(fd,'operatingMargins'), profitMargin: v(fd,'profitMargins'),
+      returnOnEquity: v(fd,'returnOnEquity'), returnOnAssets: v(fd,'returnOnAssets'),
+      debtToEquity: v(fd,'debtToEquity'), freeCashflow: v(fd,'freeCashflow'),
+      currentRatio: v(fd,'currentRatio'), shortRatio: v(ks,'shortRatio'),
+      sector: ap.sector ?? null, industry: ap.industry ?? null,
+    };
+  } catch(_) { return {}; }
 }
 
 // ── Technical analysis ─────────────────────────────────────────────────────
@@ -218,6 +246,54 @@ function computeAnalysis(sym, result) {
 function fmt(n,d=2){return n==null?'N/A':Number(n).toFixed(d);}
 function fmtBig(n){if(n==null)return'N/A';if(n>=1e9)return(n/1e9).toFixed(2)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';return n.toLocaleString();}
 
+function fmtPct(n) { return n==null?'N/A':(n*100).toFixed(1)+'%'; }
+function fmtCap(n) {
+  if(n==null) return 'N/A';
+  if(n>=1e12) return '$'+(n/1e12).toFixed(2)+'T';
+  if(n>=1e9)  return '$'+(n/1e9).toFixed(2)+'B';
+  if(n>=1e6)  return '$'+(n/1e6).toFixed(1)+'M';
+  return '$'+n.toLocaleString();
+}
+
+function renderFundamentals(f) {
+  if (!f || Object.keys(f).length === 0) return '';
+  const row = (label, val) => `<div class="metric"><span class="ml">${label}</span><span class="mv">${val}</span></div>`;
+  const pctColor = (n) => n==null?'N/A':`<span class="${n>=0?'pos':'neg'}">${fmtPct(n)}</span>`;
+  return `
+    <div style="margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:9px">Fundamentals${f.sector?` <span style="color:#484f58;font-size:0.7rem;text-transform:none">${f.sector} · ${f.industry||''}</span>`:''}
+      </div>
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Valuation</div>
+          ${row('Market Cap', fmtCap(f.marketCap))}
+          ${row('Trailing P/E', f.trailingPE!=null?fmt(f.trailingPE,1):'N/A')}
+          ${row('Forward P/E', f.forwardPE!=null?fmt(f.forwardPE,1):'N/A')}
+          ${row('Price / Book', f.priceToBook!=null?fmt(f.priceToBook,2):'N/A')}
+          ${row('EPS (TTM)', f.eps!=null?'$'+fmt(f.eps,2):'N/A')}
+          ${row('EPS (Fwd)', f.epsForward!=null?'$'+fmt(f.epsForward,2):'N/A')}
+          ${row('Beta', f.beta!=null?fmt(f.beta,2):'N/A')}
+          ${row('Dividend Yield', f.dividendYield!=null?fmtPct(f.dividendYield):'—')}
+        </div>
+        <div class="card">
+          <div class="card-title">Financials</div>
+          ${row('Revenue (TTM)', fmtCap(f.revenue))}
+          ${row('Revenue Growth', pctColor(f.revenueGrowth))}
+          ${row('Gross Margin', fmtPct(f.grossMargin))}
+          ${row('Operating Margin', fmtPct(f.operatingMargin))}
+          ${row('Profit Margin', fmtPct(f.profitMargin))}
+          ${row('Return on Equity', fmtPct(f.returnOnEquity))}
+          ${row('Return on Assets', fmtPct(f.returnOnAssets))}
+          ${row('Free Cash Flow', fmtCap(f.freeCashflow))}
+          ${row('Debt / Equity', f.debtToEquity!=null?fmt(f.debtToEquity,2):'N/A')}
+          ${row('Current Ratio', f.currentRatio!=null?fmt(f.currentRatio,2):'N/A')}
+          ${row('Short Ratio', f.shortRatio!=null?fmt(f.shortRatio,2):'N/A')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderDetail(d) {
   const pos=d.price.change>=0;
   const rsiPct=Math.min(Math.max(d.rsi,0),100);
@@ -277,6 +353,7 @@ function renderDetail(d) {
         <div class="metric"><span class="ml">Ratio</span><span class="mv ${d.volume.ratio>=1?'pos':'neg'}">${fmt(d.volume.ratio,2)}x</span></div>
       </div>
     </div>
+    ${renderFundamentals(d.fundamentals)}
     <div class="signals">
       <div class="card-title" style="margin-bottom:9px">Signals</div>
       ${(d.signals||[]).map(s=>`<div class="sig"><span class="dot ${dotClass(s)}"></span><span>${s}</span></div>`).join('')}
@@ -325,8 +402,8 @@ async function search() {
     // Try Firestore first (pre-computed), else fetch live
     let d = await loadFromFirestore(sym);
     if (!d) {
-      const result = await fetchFromYahoo(sym);
-      d = computeAnalysis(sym, result);
+      const [result, fundamentals] = await Promise.all([fetchFromYahoo(sym), fetchFundamentalsLive(sym)]);
+      d = { ...computeAnalysis(sym, result), fundamentals };
     }
     cache[sym] = d;
     addSavedChip(d);

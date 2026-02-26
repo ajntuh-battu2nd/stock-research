@@ -39,6 +39,44 @@ function toFirestore(val: any): any {
   return { stringValue: String(val) };
 }
 
+async function fetchFundamentals(symbol: string): Promise<any> {
+  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=defaultKeyStatistics,financialData,summaryDetail,assetProfile`;
+  const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+  const json = await res.json() as any;
+  const r = json?.quoteSummary?.result?.[0];
+  if (!r) return {};
+  const ks = r.defaultKeyStatistics || {};
+  const fd = r.financialData || {};
+  const sd = r.summaryDetail || {};
+  const ap = r.assetProfile || {};
+
+  const v = (obj: any, key: string) => obj?.[key]?.raw ?? obj?.[key] ?? null;
+
+  return {
+    marketCap: v(sd, 'marketCap'),
+    trailingPE: v(sd, 'trailingPE'),
+    forwardPE: v(sd, 'forwardPE'),
+    priceToBook: v(ks, 'priceToBook'),
+    eps: v(ks, 'trailingEps'),
+    epsForward: v(ks, 'forwardEps'),
+    beta: v(ks, 'beta'),
+    dividendYield: v(sd, 'dividendYield'),
+    revenue: v(fd, 'totalRevenue'),
+    revenueGrowth: v(fd, 'revenueGrowth'),
+    grossMargin: v(fd, 'grossMargins'),
+    operatingMargin: v(fd, 'operatingMargins'),
+    profitMargin: v(fd, 'profitMargins'),
+    returnOnEquity: v(fd, 'returnOnEquity'),
+    returnOnAssets: v(fd, 'returnOnAssets'),
+    debtToEquity: v(fd, 'debtToEquity'),
+    freeCashflow: v(fd, 'freeCashflow'),
+    currentRatio: v(fd, 'currentRatio'),
+    shortRatio: v(ks, 'shortRatio'),
+    sector: ap.sector ?? null,
+    industry: ap.industry ?? null,
+  };
+}
+
 async function fetchAnalysis(symbol: string): Promise<any> {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y`;
   const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
@@ -138,6 +176,8 @@ async function fetchAnalysis(symbol: string): Promise<any> {
   };
 }
 
+
+
 async function pushToFirestore(symbol: string, analysis: any) {
   const body: any = { fields: {} };
   for (const [k, v] of Object.entries(analysis)) body.fields[k] = toFirestore(v);
@@ -158,6 +198,6 @@ async function pushToFirestore(symbol: string, analysis: any) {
 
 for (const symbol of SYMBOLS) {
   console.log(`Fetching ${symbol}...`);
-  const analysis = await fetchAnalysis(symbol);
-  await pushToFirestore(symbol, analysis);
+  const [analysis, fundamentals] = await Promise.all([fetchAnalysis(symbol), fetchFundamentals(symbol)]);
+  await pushToFirestore(symbol, { ...analysis, fundamentals });
 }
