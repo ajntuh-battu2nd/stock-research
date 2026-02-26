@@ -144,6 +144,57 @@ async function fetchFromYahoo(sym) {
   return result;
 }
 
+async function fetchDeepResearchLive(sym) {
+  try {
+    const url = PROXY + encodeURIComponent(
+      `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${sym}?modules=recommendationTrend,upgradeDowngradeHistory,earningsHistory,calendarEvents,majorHoldersBreakdown,defaultKeyStatistics,financialData`
+    );
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const json = await res.json();
+    const r = json?.quoteSummary?.result?.[0];
+    if (!r) return null;
+    const rt=r.recommendationTrend||{}, udh=r.upgradeDowngradeHistory||{};
+    const eh=r.earningsHistory||{}, ce=r.calendarEvents||{};
+    const mhb=r.majorHoldersBreakdown||{}, fd=r.financialData||{}, ks=r.defaultKeyStatistics||{};
+    const v=(obj,key)=>obj?.[key]?.raw??obj?.[key]??null;
+    const mean=v(fd,'recommendationMean');
+    const consensus=mean==null?'N/A':mean<=1.5?'Strong Buy':mean<=2.5?'Buy':mean<=3.5?'Hold':mean<=4.5?'Sell':'Strong Sell';
+    const trend=rt.trend?.[0]||{};
+    const actionLabels={up:'Upgraded',down:'Downgraded',init:'Initiated',main:'Maintained',reit:'Reiterated'};
+    const upgrades=(udh.history||[]).slice(0,5).map(i=>({
+      firm:i.firm||'',action:actionLabels[i.action]||i.action||'',
+      fromGrade:i.fromGrade||'',toGrade:i.toGrade||'',
+      date:i.epochGradeDate?new Date(i.epochGradeDate*1000).toISOString().split('T')[0]:'',
+    }));
+    const quarters=(eh.history||[]).slice(-4).map(q=>{
+      const surprise=q?.surprisePercent?.raw??null;
+      const beat=surprise==null?'N/A':surprise>0.05?'Beat':surprise<-0.05?'Miss':'In-Line';
+      return{period:q?.quarter?.fmt||'',epsActual:q?.epsActual?.raw??null,epsEstimate:q?.epsEstimate?.raw??null,surprisePct:surprise!=null?surprise*100:null,beat};
+    });
+    const earningsDates=ce.earnings?.earningsDate||[];
+    const nextEarningsDate=earningsDates[0]?.raw?new Date(earningsDates[0].raw*1000).toISOString().split('T')[0]:null;
+    const currentPrice=v(fd,'currentPrice'), targetMean=v(fd,'targetMeanPrice');
+    const shortFloat=v(ks,'shortPercentOfFloat');
+    const meanScore=mean!=null?Math.max(0,Math.min(40,((5-mean)/4)*40)):20;
+    const shortScore=shortFloat!=null?Math.max(0,Math.min(30,(1-shortFloat/0.20)*30)):15;
+    const beats=quarters.filter(q=>q.beat==='Beat').length;
+    const counted=quarters.filter(q=>q.beat!=='N/A').length;
+    const beatScore=counted>0?(beats/counted)*30:15;
+    const sentimentScore=Math.round(Math.max(0,Math.min(100,meanScore+shortScore+beatScore)));
+    const sentimentLabel=sentimentScore>=75?'Very Bullish':sentimentScore>=55?'Bullish':sentimentScore>=40?'Neutral':sentimentScore>=20?'Bearish':'Very Bearish';
+    return{
+      analystRatings:{consensus,recommendationMean:mean,numberOfAnalysts:v(fd,'numberOfAnalystOpinions'),
+        targetHigh:v(fd,'targetHighPrice'),targetLow:v(fd,'targetLowPrice'),targetMean,
+        upsidePct:(currentPrice&&targetMean)?((targetMean-currentPrice)/currentPrice)*100:null,
+        strongBuy:v(trend,'strongBuy'),buy:v(trend,'buy'),hold:v(trend,'hold'),sell:v(trend,'sell'),strongSell:v(trend,'strongSell')},
+      upgrades,earnings:{nextEarningsDate,quarters},
+      ownership:{institutionalPct:v(mhb,'institutionsPercentHeld'),insiderPct:v(mhb,'insidersPercentHeld'),shortFloatPct:shortFloat,shortRatio:v(ks,'shortRatio')},
+      sentimentScore,sentimentLabel,
+    };
+  } catch(_){return null;}
+}
+
 async function fetchFundamentalsLive(sym) {
   try {
     const url = PROXY + encodeURIComponent(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${sym}?modules=defaultKeyStatistics,financialData,summaryDetail,assetProfile`);
@@ -256,6 +307,96 @@ function fmtCap(n) {
   return '$'+n.toLocaleString();
 }
 
+function renderDeepResearch(dr) {
+  if (!dr) return '';
+  const ar = dr.analystRatings || {};
+  const ow = dr.ownership || {};
+  const ea = dr.earnings || {};
+  const row = (label, val) => `<div class="metric"><span class="ml">${label}</span><span class="mv">${val}</span></div>`;
+
+  // Sentiment pill
+  const scoreColor = dr.sentimentScore>=75?'#3fb950':dr.sentimentScore>=55?'#58a6ff':dr.sentimentScore>=40?'#8b949e':dr.sentimentScore>=20?'#f0c000':'#f85149';
+  const scoreBg    = dr.sentimentScore>=75?'#1a4731':dr.sentimentScore>=55?'#1c2333':dr.sentimentScore>=40?'#2d2f35':dr.sentimentScore>=20?'#3a2f0a':'#4a1320';
+  const sentimentPill = dr.sentimentScore!=null
+    ? `<span style="padding:4px 12px;border-radius:20px;font-size:0.8rem;font-weight:700;background:${scoreBg};color:${scoreColor};border:1px solid ${scoreColor}">${dr.sentimentScore}/100 · ${dr.sentimentLabel}</span>`
+    : '';
+
+  const consensusColor=['Strong Buy','Buy'].includes(ar.consensus)?'#3fb950':ar.consensus==='Hold'?'#8b949e':'#f85149';
+  const total=(ar.strongBuy||0)+(ar.buy||0)+(ar.hold||0)+(ar.sell||0)+(ar.strongSell||0);
+  const barRow=(count,color,label)=>{
+    if(!count||!total) return '';
+    const pct=(count/total*100).toFixed(1);
+    return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+      <div style="width:${pct}%;min-width:2px;height:8px;background:${color};border-radius:2px"></div>
+      <span style="font-size:0.75rem;color:#8b949e">${label} ${count}</span>
+    </div>`;
+  };
+
+  const quartersHtml=(ea.quarters||[]).map(q=>{
+    const bc=q.beat==='Beat'?'#3fb950':q.beat==='Miss'?'#f85149':'#8b949e';
+    const sp=q.surprisePct!=null?`<span style="color:${bc}">${q.surprisePct>0?'+':''}${q.surprisePct.toFixed(1)}%</span>`:'';
+    return `<div class="metric" style="border-bottom:1px solid #3a3a3c;padding:5px 0;flex-wrap:wrap;gap:4px">
+      <span class="ml" style="min-width:52px">${q.period||'—'}</span>
+      <span class="mv" style="min-width:48px">${q.epsActual!=null?'$'+q.epsActual.toFixed(2):'—'}</span>
+      <span class="ml" style="min-width:56px">est $${q.epsEstimate!=null?q.epsEstimate.toFixed(2):'—'}</span>
+      <span style="font-size:0.78rem;font-weight:600;color:${bc};min-width:42px">${q.beat||'—'}</span>
+      ${sp}
+    </div>`;
+  }).join('');
+
+  const upgradesHtml=(dr.upgrades||[]).map(u=>{
+    const ac=u.action==='Upgraded'||u.action==='Initiated'?'#3fb950':u.action==='Downgraded'?'#f85149':'#8b949e';
+    const fromTo=u.fromGrade?`${u.fromGrade} → <strong>${u.toGrade}</strong>`:`→ <strong>${u.toGrade}</strong>`;
+    return `<div style="display:flex;align-items:baseline;gap:8px;padding:6px 0;border-bottom:1px solid #3a3a3c;flex-wrap:wrap;font-size:0.82rem">
+      <span style="font-weight:600;min-width:130px;color:#e6edf3">${u.firm||'—'}</span>
+      <span style="color:${ac};min-width:80px;font-weight:600">${u.action}</span>
+      <span style="color:#8b949e;flex:1">${fromTo}</span>
+      <span style="color:#484f58;white-space:nowrap">${u.date||''}</span>
+    </div>`;
+  }).join('');
+
+  return `
+    <div style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <div class="card-title" style="margin-bottom:0">Deep Research</div>
+        ${sentimentPill}
+      </div>
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Analyst Ratings</div>
+          <div style="font-size:1.1rem;font-weight:700;color:${consensusColor};margin-bottom:2px">${ar.consensus||'N/A'}</div>
+          <div style="font-size:0.75rem;color:#8b949e;margin-bottom:10px">${ar.numberOfAnalysts!=null?ar.numberOfAnalysts+' analysts':''}</div>
+          ${barRow(ar.strongBuy, '#1a7a3a','Strong Buy')}
+          ${barRow(ar.buy,       '#3fb950','Buy')}
+          ${barRow(ar.hold,      '#8b949e','Hold')}
+          ${barRow(ar.sell,      '#f85149','Sell')}
+          ${barRow(ar.strongSell,'#8b0000','Strong Sell')}
+          <hr class="dim"/>
+          ${row('Target High', ar.targetHigh!=null?'$'+fmt(ar.targetHigh):'N/A')}
+          ${row('Target Avg',  ar.targetMean!=null?'$'+fmt(ar.targetMean):'N/A')}
+          ${row('Target Low',  ar.targetLow !=null?'$'+fmt(ar.targetLow) :'N/A')}
+          ${ar.upsidePct!=null?row('Upside/Down',`<span class="${ar.upsidePct>=0?'pos':'neg'}">${ar.upsidePct>=0?'+':''}${fmt(ar.upsidePct,1)}%</span>`):''}
+        </div>
+        <div class="card">
+          <div class="card-title">Ownership</div>
+          ${row('Institutional', ow.institutionalPct!=null?fmtPct(ow.institutionalPct):'N/A')}
+          ${row('Insider',       ow.insiderPct!=null      ?fmtPct(ow.insiderPct)      :'N/A')}
+          <hr class="dim"/>
+          ${row('Short % Float', ow.shortFloatPct!=null?fmtPct(ow.shortFloatPct):'N/A')}
+          ${row('Short Ratio',   ow.shortRatio!=null?fmt(ow.shortRatio,1)+' days':'N/A')}
+        </div>
+        <div class="card">
+          <div class="card-title">Earnings</div>
+          ${ea.nextEarningsDate?`<div style="font-size:0.8rem;color:#58a6ff;margin-bottom:8px">Next: ${new Date(ea.nextEarningsDate+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>`:''}
+          <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:.06em;color:#484f58;margin-bottom:4px">Period · Actual · Est · Result</div>
+          ${quartersHtml||'<div style="color:#484f58;font-size:0.8rem">No data</div>'}
+        </div>
+      </div>
+      ${upgradesHtml?`<div class="card" style="margin-top:12px"><div class="card-title" style="margin-bottom:8px">Recent Analyst Actions</div>${upgradesHtml}</div>`:''}
+    </div>
+  `;
+}
+
 function renderFundamentals(f) {
   if (!f || Object.keys(f).length === 0) return '';
   const row = (label, val) => `<div class="metric"><span class="ml">${label}</span><span class="mv">${val}</span></div>`;
@@ -355,6 +496,7 @@ function renderDetail(d) {
       </div>
     </div>
     ${renderFundamentals(d.fundamentals)}
+    ${renderDeepResearch(d.deepResearch)}
     <div class="signals">
       <div class="card-title" style="margin-bottom:9px">Signals</div>
       ${(d.signals||[]).map(s=>`<div class="sig"><span class="dot ${dotClass(s)}"></span><span>${s}</span></div>`).join('')}
@@ -403,8 +545,8 @@ async function search() {
     // Try Firestore first (pre-computed), else fetch live
     let d = await loadFromFirestore(sym);
     if (!d) {
-      const [result, fundamentals] = await Promise.all([fetchFromYahoo(sym), fetchFundamentalsLive(sym)]);
-      d = { ...computeAnalysis(sym, result), fundamentals };
+      const [result, fundamentals, deepResearch] = await Promise.all([fetchFromYahoo(sym), fetchFundamentalsLive(sym), fetchDeepResearchLive(sym)]);
+      d = { ...computeAnalysis(sym, result), fundamentals, deepResearch };
     }
     cache[sym] = d;
     addSavedChip(d);

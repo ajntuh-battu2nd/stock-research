@@ -39,6 +39,106 @@ function toFirestore(val: any): any {
   return { stringValue: String(val) };
 }
 
+async function fetchDeepResearch(symbol: string): Promise<any> {
+  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=recommendationTrend,upgradeDowngradeHistory,earningsHistory,calendarEvents,majorHoldersBreakdown,defaultKeyStatistics,financialData`;
+  const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+  const json = await res.json() as any;
+  const r = json?.quoteSummary?.result?.[0];
+  if (!r) return {};
+
+  const rt  = r.recommendationTrend || {};
+  const udh = r.upgradeDowngradeHistory || {};
+  const eh  = r.earningsHistory || {};
+  const ce  = r.calendarEvents || {};
+  const mhb = r.majorHoldersBreakdown || {};
+  const fd  = r.financialData || {};
+  const ks  = r.defaultKeyStatistics || {};
+  const v = (obj: any, key: string) => obj?.[key]?.raw ?? obj?.[key] ?? null;
+
+  const mean = v(fd, 'recommendationMean');
+  const consensus = mean == null ? 'N/A'
+    : mean <= 1.5 ? 'Strong Buy'
+    : mean <= 2.5 ? 'Buy'
+    : mean <= 3.5 ? 'Hold'
+    : mean <= 4.5 ? 'Sell'
+    : 'Strong Sell';
+
+  const trend = rt.trend?.[0] || {};
+  const actionLabels: Record<string, string> = {
+    up: 'Upgraded', down: 'Downgraded', init: 'Initiated', main: 'Maintained', reit: 'Reiterated',
+  };
+  const upgrades = (udh.history || []).slice(0, 5).map((item: any) => ({
+    firm:      item.firm ?? '',
+    action:    actionLabels[item.action] ?? item.action ?? '',
+    fromGrade: item.fromGrade ?? '',
+    toGrade:   item.toGrade ?? '',
+    date:      item.epochGradeDate ? new Date(item.epochGradeDate * 1000).toISOString().split('T')[0] : '',
+  }));
+
+  const quarters = (eh.history || []).slice(-4).map((q: any) => {
+    const surprise = q?.surprisePercent?.raw ?? null;
+    const beat = surprise == null ? 'N/A'
+      : surprise > 0.05  ? 'Beat'
+      : surprise < -0.05 ? 'Miss'
+      : 'In-Line';
+    return {
+      period:      q?.quarter?.fmt ?? '',
+      epsActual:   q?.epsActual?.raw ?? null,
+      epsEstimate: q?.epsEstimate?.raw ?? null,
+      surprisePct: surprise != null ? surprise * 100 : null,
+      beat,
+    };
+  });
+
+  const earningsDates = ce.earnings?.earningsDate || [];
+  const nextEarningsDate = earningsDates[0]?.raw
+    ? new Date(earningsDates[0].raw * 1000).toISOString().split('T')[0]
+    : null;
+
+  const currentPrice = v(fd, 'currentPrice');
+  const targetMean   = v(fd, 'targetMeanPrice');
+  const shortFloat   = v(ks, 'shortPercentOfFloat');
+
+  const meanScore  = mean != null ? Math.max(0, Math.min(40, ((5 - mean) / 4) * 40)) : 20;
+  const shortScore = shortFloat != null ? Math.max(0, Math.min(30, (1 - shortFloat / 0.20) * 30)) : 15;
+  const beats      = quarters.filter((q: any) => q.beat === 'Beat').length;
+  const counted    = quarters.filter((q: any) => q.beat !== 'N/A').length;
+  const beatScore  = counted > 0 ? (beats / counted) * 30 : 15;
+  const sentimentScore = Math.round(Math.max(0, Math.min(100, meanScore + shortScore + beatScore)));
+  const sentimentLabel = sentimentScore >= 75 ? 'Very Bullish'
+    : sentimentScore >= 55 ? 'Bullish'
+    : sentimentScore >= 40 ? 'Neutral'
+    : sentimentScore >= 20 ? 'Bearish'
+    : 'Very Bearish';
+
+  return {
+    analystRatings: {
+      consensus,
+      recommendationMean: mean,
+      numberOfAnalysts:   v(fd, 'numberOfAnalystOpinions'),
+      targetHigh:         v(fd, 'targetHighPrice'),
+      targetLow:          v(fd, 'targetLowPrice'),
+      targetMean,
+      upsidePct: (currentPrice && targetMean) ? ((targetMean - currentPrice) / currentPrice) * 100 : null,
+      strongBuy:   v(trend, 'strongBuy'),
+      buy:         v(trend, 'buy'),
+      hold:        v(trend, 'hold'),
+      sell:        v(trend, 'sell'),
+      strongSell:  v(trend, 'strongSell'),
+    },
+    upgrades,
+    earnings: { nextEarningsDate, quarters },
+    ownership: {
+      institutionalPct: v(mhb, 'institutionsPercentHeld'),
+      insiderPct:       v(mhb, 'insidersPercentHeld'),
+      shortFloatPct:    shortFloat,
+      shortRatio:       v(ks, 'shortRatio'),
+    },
+    sentimentScore,
+    sentimentLabel,
+  };
+}
+
 async function fetchFundamentals(symbol: string): Promise<any> {
   const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=defaultKeyStatistics,financialData,summaryDetail,assetProfile`;
   const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
@@ -198,6 +298,6 @@ async function pushToFirestore(symbol: string, analysis: any) {
 
 for (const symbol of SYMBOLS) {
   console.log(`Fetching ${symbol}...`);
-  const [analysis, fundamentals] = await Promise.all([fetchAnalysis(symbol), fetchFundamentals(symbol)]);
-  await pushToFirestore(symbol, { ...analysis, fundamentals });
+  const [analysis, fundamentals, deepResearch] = await Promise.all([fetchAnalysis(symbol), fetchFundamentals(symbol), fetchDeepResearch(symbol)]);
+  await pushToFirestore(symbol, { ...analysis, fundamentals, deepResearch });
 }
