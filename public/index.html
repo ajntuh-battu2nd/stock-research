@@ -304,6 +304,75 @@ function fmtCap(n) {
   return '$'+n.toLocaleString();
 }
 
+function renderNarrative(n) {
+  if (!n) return '';
+  const recColor = n.recommendation === 'BUY' ? '#3fb950' : n.recommendation === 'SELL' ? '#f85149' : '#f0c000';
+  const recBg    = n.recommendation === 'BUY' ? '#1a4731' : n.recommendation === 'SELL' ? '#4a1320' : '#3a2f0a';
+
+  const listItems = (arr) => (arr || []).map(i => `
+    <div style="display:flex;gap:8px;padding:4px 0;font-size:0.85rem">
+      <span style="color:#58a6ff;flex-shrink:0">›</span>
+      <span>${i}</span>
+    </div>`).join('');
+
+  return `
+    <div style="margin-bottom:16px;background:linear-gradient(135deg,#1c2333 0%,#2c2c2e 100%);border:1px solid #3a3a3c;border-radius:10px;padding:18px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:0.72rem;text-transform:uppercase;letter-spacing:.08em;color:#58a6ff;font-weight:700">Claude AI Research</span>
+        </div>
+        ${n.recommendation ? `<span style="padding:5px 16px;border-radius:20px;font-weight:700;font-size:0.85rem;background:${recBg};color:${recColor};border:1px solid ${recColor}">${n.recommendation}</span>` : ''}
+      </div>
+
+      ${n.executiveSummary ? `<p style="font-size:0.9rem;line-height:1.6;color:#e6edf3;margin-bottom:14px">${n.executiveSummary}</p>` : ''}
+
+      ${n.recommendationRationale ? `
+        <div style="background:#0d1117;border-left:3px solid ${recColor};padding:10px 14px;border-radius:0 6px 6px 0;margin-bottom:14px;font-size:0.85rem;color:#8b949e;line-height:1.5">
+          ${n.recommendationRationale}
+        </div>` : ''}
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:14px">
+        ${n.investmentThesis ? `
+          <div>
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:.08em;color:#3fb950;margin-bottom:6px;font-weight:700">Bull Case</div>
+            <p style="font-size:0.83rem;line-height:1.55;color:#8b949e">${n.investmentThesis}</p>
+          </div>` : ''}
+        ${n.bearCase ? `
+          <div>
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:.08em;color:#f85149;margin-bottom:6px;font-weight:700">Bear Case</div>
+            <p style="font-size:0.83rem;line-height:1.55;color:#8b949e">${n.bearCase}</p>
+          </div>` : ''}
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:14px">
+        ${n.catalysts?.length ? `
+          <div>
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:.08em;color:#58a6ff;margin-bottom:6px;font-weight:700">Catalysts</div>
+            ${listItems(n.catalysts)}
+          </div>` : ''}
+        ${n.risks?.length ? `
+          <div>
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:.08em;color:#f0c000;margin-bottom:6px;font-weight:700">Risks</div>
+            ${listItems(n.risks)}
+          </div>` : ''}
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">
+        ${n.technicalOutlook ? `
+          <div>
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:.08em;color:#8b949e;margin-bottom:5px;font-weight:700">Technical Outlook</div>
+            <p style="font-size:0.82rem;line-height:1.5;color:#8b949e">${n.technicalOutlook}</p>
+          </div>` : ''}
+        ${n.fundamentalAssessment ? `
+          <div>
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:.08em;color:#8b949e;margin-bottom:5px;font-weight:700">Fundamental Assessment</div>
+            <p style="font-size:0.82rem;line-height:1.5;color:#8b949e">${n.fundamentalAssessment}</p>
+          </div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
 function renderDeepResearch(dr) {
   if (!dr) return '';
   const ar = dr.analystRatings || {};
@@ -492,6 +561,7 @@ function renderDetail(d) {
         <div class="metric"><span class="ml">Ratio</span><span class="mv ${d.volume.ratio>=1?'pos':'neg'}">${fmt(d.volume.ratio,2)}x</span></div>
       </div>
     </div>
+    ${renderNarrative(d.narrative)}
     ${renderFundamentals(d.fundamentals)}
     ${renderDeepResearch(d.deepResearch)}
     <div class="signals">

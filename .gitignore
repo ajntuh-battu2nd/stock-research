@@ -1,0 +1,4 @@
+.env
+serviceAccount.json
+nvda_analysis.json
+.firebase/
