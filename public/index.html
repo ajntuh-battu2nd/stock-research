@@ -8,7 +8,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #0d1117; color: #e6edf3;
+      background: #1c1c1e; color: #e6edf3;
       min-height: 100vh; padding: 24px 16px;
     }
     .container { max-width: 880px; margin: 0 auto; }
@@ -18,7 +18,7 @@
     .app-title { font-size: 1.1rem; font-weight: 700; color: #58a6ff; white-space: nowrap; }
     .search-wrap { display: flex; gap: 8px; flex: 1; min-width: 220px; }
     .search-wrap input {
-      flex: 1; background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+      flex: 1; background: #2c2c2e; border: 1px solid #3a3a3c; border-radius: 8px;
       color: #e6edf3; font-size: 0.95rem; padding: 9px 14px; outline: none;
       text-transform: uppercase; letter-spacing: 1px;
       transition: border-color .15s;
@@ -31,13 +31,13 @@
       transition: background .15s; white-space: nowrap;
     }
     .btn-search:hover { background: #388bfd; }
-    .btn-search:disabled { background: #21262d; color: #484f58; cursor: default; }
+    .btn-search:disabled { background: #3a3a3c; color: #484f58; cursor: default; }
 
     /* Saved chips */
     .saved-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .08em; color: #484f58; margin-bottom: 8px; }
     .stock-list { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; min-height: 20px; }
     .stock-btn {
-      background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+      background: #2c2c2e; border: 1px solid #3a3a3c; border-radius: 8px;
       padding: 8px 14px; cursor: pointer; transition: border-color .15s; text-align: left;
     }
     .stock-btn:hover { border-color: #58a6ff; }
@@ -59,17 +59,17 @@
     .price-big { font-size: 2rem; font-weight: 700; margin-bottom: 3px; }
     .price-chg { font-size: 0.9rem; margin-bottom: 18px; }
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(205px, 1fr)); gap: 12px; margin-bottom: 16px; }
-    .card { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 14px; }
+    .card { background: #2c2c2e; border: 1px solid #3a3a3c; border-radius: 10px; padding: 14px; }
     .card-title { font-size: 0.71rem; text-transform: uppercase; letter-spacing: .08em; color: #8b949e; margin-bottom: 9px; }
     .metric { display: flex; justify-content: space-between; padding: 3px 0; }
     .ml { font-size: 0.81rem; color: #8b949e; }
     .mv { font-size: 0.87rem; font-weight: 600; }
     hr.dim { border: none; border-top: 1px solid #21262d; margin: 8px 0; }
-    .rsi-bar { width: 100%; height: 8px; background: #21262d; border-radius: 4px; margin-top: 8px; position: relative; overflow: hidden; }
+    .rsi-bar { width: 100%; height: 8px; background: #3a3a3c; border-radius: 4px; margin-top: 8px; position: relative; overflow: hidden; }
     .rsi-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #3fb950 0%, #f0c000 50%, #f85149 100%); width: 100%; }
     .rsi-marker { position: absolute; top: -3px; width: 2px; height: 14px; background: #fff; border-radius: 1px; transform: translateX(-50%); }
     .signals { margin-bottom: 16px; }
-    .sig { display: flex; align-items: center; gap: 9px; padding: 7px 12px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; margin-bottom: 7px; font-size: 0.85rem; }
+    .sig { display: flex; align-items: center; gap: 9px; padding: 7px 12px; background: #2c2c2e; border: 1px solid #3a3a3c; border-radius: 8px; margin-bottom: 7px; font-size: 0.85rem; }
     .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: #3fb950; }
     .dot.warn { background: #f0c000; }
     .dot.bear { background: #f85149; }
