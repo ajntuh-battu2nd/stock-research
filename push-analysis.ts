@@ -25,6 +25,16 @@ const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
 });
 const { access_token: TOKEN } = await tokenRes.json() as any;
 
+// Yahoo Finance crumb auth
+const cookieRes = await fetch('https://fc.yahoo.com', { headers: { 'User-Agent': 'Mozilla/5.0' } });
+const YF_COOKIE = cookieRes.headers.get('set-cookie') || '';
+const crumbRes = await fetch('https://query1.finance.yahoo.com/v1/test/getcrumb', {
+  headers: { 'User-Agent': 'Mozilla/5.0', 'Cookie': YF_COOKIE },
+});
+const YF_CRUMB = await crumbRes.text();
+const YF_HEADERS = { 'User-Agent': 'Mozilla/5.0', 'Cookie': YF_COOKIE };
+console.log('Yahoo crumb:', YF_CRUMB);
+
 function toFirestore(val: any): any {
   if (val === null || val === undefined) return { nullValue: null };
   if (typeof val === 'boolean') return { booleanValue: val };
@@ -40,8 +50,8 @@ function toFirestore(val: any): any {
 }
 
 async function fetchDeepResearch(symbol: string): Promise<any> {
-  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=recommendationTrend,upgradeDowngradeHistory,earningsHistory,calendarEvents,majorHoldersBreakdown,defaultKeyStatistics,financialData`;
-  const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=recommendationTrend,upgradeDowngradeHistory,earningsHistory,calendarEvents,majorHoldersBreakdown,defaultKeyStatistics,financialData&crumb=${encodeURIComponent(YF_CRUMB)}`;
+  const res = await fetch(url, { headers: YF_HEADERS });
   const json = await res.json() as any;
   const r = json?.quoteSummary?.result?.[0];
   if (!r) return {};
@@ -140,8 +150,8 @@ async function fetchDeepResearch(symbol: string): Promise<any> {
 }
 
 async function fetchFundamentals(symbol: string): Promise<any> {
-  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=defaultKeyStatistics,financialData,summaryDetail,assetProfile`;
-  const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=defaultKeyStatistics,financialData,summaryDetail,assetProfile&crumb=${encodeURIComponent(YF_CRUMB)}`;
+  const res = await fetch(url, { headers: YF_HEADERS });
   const json = await res.json() as any;
   const r = json?.quoteSummary?.result?.[0];
   if (!r) return {};
@@ -178,8 +188,8 @@ async function fetchFundamentals(symbol: string): Promise<any> {
 }
 
 async function fetchAnalysis(symbol: string): Promise<any> {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y`;
-  const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y&crumb=${encodeURIComponent(YF_CRUMB)}`;
+  const res = await fetch(url, { headers: YF_HEADERS });
   const json = await res.json() as any;
   const result = json.chart.result[0];
   const meta = result.meta;
