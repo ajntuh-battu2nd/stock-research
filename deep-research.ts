@@ -339,10 +339,18 @@ async function callClaude(prompt: string): Promise<any> {
       clearTimeout(timeout);
       if (!res.ok) { console.error(`  Claude error: ${res.status} ${await res.text()}`); return null; }
       const json = await res.json() as any;
+      const usage = json.usage || {};
+      const claudeUsage = {
+        inputTokens: usage.input_tokens || 0,
+        outputTokens: usage.output_tokens || 0,
+        costUsd: (usage.input_tokens || 0) * 0.000003 + (usage.output_tokens || 0) * 0.000015,
+        model: 'claude-sonnet-4-6',
+        generatedAt: new Date().toISOString(),
+      };
       const raw = (json.content?.[0]?.text || '').trim();
-      try { return JSON.parse(raw); } catch {
+      try { return { result: JSON.parse(raw), claudeUsage }; } catch {
         const stripped = raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
-        try { return JSON.parse(stripped); } catch (e2) {
+        try { return { result: JSON.parse(stripped), claudeUsage }; } catch (e2) {
           console.error(`  Parse failed, attempt ${attempt}: ${(e2 as any).message}`);
           console.error(`  Raw start: ${raw.slice(0, 200)}`);
           console.error(`  Raw end: ${raw.slice(-200)}`);
@@ -357,10 +365,12 @@ async function callClaude(prompt: string): Promise<any> {
   return null;
 }
 
-const report = await callClaude(prompt);
-if (!report) { console.error('❌ Failed to generate report'); process.exit(1); }
+const claudeResult = await callClaude(prompt);
+if (!claudeResult) { console.error('❌ Failed to generate report'); process.exit(1); }
+const { result: report, claudeUsage } = claudeResult;
 console.log(`  Recommendation: ${report.recommendation}`);
 console.log(`  Price Target: $${report.priceTarget}`);
+console.log(`  Tokens: ${claudeUsage.inputTokens} in / ${claudeUsage.outputTokens} out · $${claudeUsage.costUsd.toFixed(4)}`);
 
 // ── Step 7: Store in Firestore ─────────────────────────────────────────────
 console.log(`\n💾 Storing in Firestore...`);
@@ -384,6 +394,7 @@ const docData = {
   companyName: COMPANY_NAME,
   generatedAt: new Date().toISOString(),
   report,
+  claudeUsage,
   rawData: {
     annualRevenue: last5Annual.map(r => ({ period: r.period, value: r.value })),
     quarterlyRevenue: last5Q.map(r => ({ period: r.period, value: r.value })),

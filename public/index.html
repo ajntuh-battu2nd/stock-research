@@ -3,123 +3,265 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Stock Technical Analysis</title>
+  <title>Stock Research</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #1c1c1e; color: #e6edf3;
-      min-height: 100vh; padding: 24px 16px;
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:       #111318;
+      --surface:  #1a1d24;
+      --card:     #20232c;
+      --border:   #2e3340;
+      --border2:  #383d4a;
+      --text:     #e2e8f0;
+      --muted:    #8892a4;
+      --faint:    #4a5166;
+      --blue:     #4f8ef7;
+      --green:    #34c77b;
+      --red:      #f05252;
+      --yellow:   #f0b429;
+      --purple:   #a78bfa;
+      --green-bg: #0d2a1a;
+      --green-bd: #1a4731;
+      --red-bg:   #2a0d0d;
+      --red-bd:   #4a1320;
+      --yellow-bg:#2a1f05;
+      --yellow-bd:#4a3810;
+      --blue-bg:  #0d1a2a;
+      --blue-bd:  #1a3050;
     }
-    .container { max-width: 880px; margin: 0 auto; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh;
+    }
 
-    /* Header */
-    .top { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; flex-wrap: wrap; }
-    .app-title { font-size: 1.1rem; font-weight: 700; color: #58a6ff; white-space: nowrap; }
-    .search-wrap { display: flex; gap: 8px; flex: 1; min-width: 220px; }
-    .search-wrap input {
-      flex: 1; background: #2c2c2e; border: 1px solid #3a3a3c; border-radius: 8px;
-      color: #e6edf3; font-size: 0.95rem; padding: 9px 14px; outline: none;
-      text-transform: uppercase; letter-spacing: 1px;
+    /* ── Top bar ── */
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      display: flex; align-items: center; gap: 16px;
+      height: 56px; position: sticky; top: 0; z-index: 100;
+    }
+    .logo { font-size: 1rem; font-weight: 800; color: var(--blue); letter-spacing: -.3px; white-space: nowrap; }
+    .logo span { color: var(--muted); font-weight: 400; }
+    .search-row { display: flex; gap: 8px; flex: 1; max-width: 360px; margin-left: auto; }
+    .search-row input {
+      flex: 1; background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 0.9rem;
+      padding: 7px 12px; outline: none; text-transform: uppercase; letter-spacing: 1px;
       transition: border-color .15s;
     }
-    .search-wrap input:focus { border-color: #58a6ff; }
-    .search-wrap input::placeholder { text-transform: none; letter-spacing: 0; color: #484f58; }
+    .search-row input:focus { border-color: var(--blue); }
+    .search-row input::placeholder { text-transform: none; letter-spacing: 0; color: var(--faint); }
     .btn-search {
-      background: #1f6feb; border: none; border-radius: 8px; color: #fff;
-      font-size: 0.9rem; font-weight: 600; padding: 9px 20px; cursor: pointer;
-      transition: background .15s; white-space: nowrap;
+      background: var(--blue); border: none; border-radius: 8px; color: #fff;
+      font-size: 0.85rem; font-weight: 600; padding: 7px 18px; cursor: pointer;
+      transition: opacity .15s; white-space: nowrap;
     }
-    .btn-search:hover { background: #388bfd; }
-    .btn-search:disabled { background: #3a3a3c; color: #484f58; cursor: default; }
+    .btn-search:hover { opacity: .85; }
+    .btn-search:disabled { background: var(--border); color: var(--faint); cursor: default; }
 
-    /* Saved chips */
-    .saved-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .08em; color: #484f58; margin-bottom: 8px; }
-    .stock-list { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; min-height: 20px; }
+    /* ── Layout ── */
+    .layout { display: flex; min-height: calc(100vh - 56px); }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 200px; flex-shrink: 0;
+      background: var(--surface); border-right: 1px solid var(--border);
+      padding: 16px 10px; overflow-y: auto;
+      position: sticky; top: 56px; height: calc(100vh - 56px);
+    }
+    .sidebar-label {
+      font-size: 0.65rem; text-transform: uppercase; letter-spacing: .1em;
+      color: var(--faint); padding: 0 6px; margin-bottom: 8px;
+    }
     .stock-btn {
-      background: #2c2c2e; border: 1px solid #3a3a3c; border-radius: 8px;
-      padding: 8px 14px; cursor: pointer; transition: border-color .15s; text-align: left;
-      color: #e6edf3;
+      display: block; width: 100%;
+      background: transparent; border: 1px solid transparent;
+      border-radius: 8px; padding: 9px 10px; cursor: pointer;
+      text-align: left; color: var(--text); transition: all .15s;
+      margin-bottom: 4px;
     }
-    .stock-btn:hover { border-color: #58a6ff; }
-    .stock-btn.active { border-color: #58a6ff; background: #1c2333; }
-    .stock-btn .sym { font-size: 0.9rem; font-weight: 700; }
-    .stock-btn .s-price { font-size: 0.75rem; color: #8b949e; margin-top: 1px; }
-    .stock-btn .s-chg  { font-size: 0.7rem; margin-top: 1px; }
-    .pos { color: #3fb950; } .neg { color: #f85149; }
+    .stock-btn:hover { background: var(--card); border-color: var(--border); }
+    .stock-btn.active { background: var(--blue-bg); border-color: var(--blue); }
+    .stock-btn .sym { font-size: 0.88rem; font-weight: 700; letter-spacing: .02em; }
+    .stock-btn .s-price { font-size: 0.75rem; color: var(--muted); margin-top: 1px; }
+    .stock-btn .s-chg { font-size: 0.72rem; margin-top: 1px; font-weight: 500; }
+    .stock-btn .s-date { font-size: 0.65rem; color: var(--faint); margin-top: 2px; }
+    .pos { color: var(--green); }
+    .neg { color: var(--red); }
 
-    /* Detail */
-    #detail { display: none; }
-    #detail.visible { display: block; }
-    .d-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
-    .ticker { font-size: 1.7rem; font-weight: 700; }
-    .badge { padding: 5px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; }
-    .badge.BULLISH { background: #1a4731; color: #3fb950; border: 1px solid #3fb950; }
-    .badge.BEARISH { background: #4a1320; color: #f85149; border: 1px solid #f85149; }
-    .badge.NEUTRAL  { background: #2d2f35; color: #8b949e; border: 1px solid #8b949e; }
-    .price-big { font-size: 2rem; font-weight: 700; margin-bottom: 3px; }
-    .price-chg { font-size: 0.9rem; margin-bottom: 18px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(205px, 1fr)); gap: 12px; margin-bottom: 16px; }
-    .card { background: #2c2c2e; border: 1px solid #3a3a3c; border-radius: 10px; padding: 14px; }
-    .card-title { font-size: 0.71rem; text-transform: uppercase; letter-spacing: .08em; color: #8b949e; margin-bottom: 9px; }
-    .metric { display: flex; justify-content: space-between; padding: 3px 0; }
-    .ml { font-size: 0.81rem; color: #8b949e; }
-    .mv { font-size: 0.87rem; font-weight: 600; }
-    hr.dim { border: none; border-top: 1px solid #21262d; margin: 8px 0; }
-    .rsi-bar { width: 100%; height: 8px; background: #3a3a3c; border-radius: 4px; margin-top: 8px; position: relative; overflow: hidden; }
-    .rsi-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #3fb950 0%, #f0c000 50%, #f85149 100%); width: 100%; }
-    .rsi-marker { position: absolute; top: -3px; width: 2px; height: 14px; background: #fff; border-radius: 1px; transform: translateX(-50%); }
-    .signals { margin-bottom: 16px; }
-    .sig { display: flex; align-items: center; gap: 9px; padding: 7px 12px; background: #2c2c2e; border: 1px solid #3a3a3c; border-radius: 8px; margin-bottom: 7px; font-size: 0.85rem; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: #3fb950; }
-    .dot.warn { background: #f0c000; }
-    .dot.bear { background: #f85149; }
-    footer { font-size: 0.7rem; color: #484f58; text-align: center; margin-top: 18px; }
+    /* ── Main panel ── */
+    .main { flex: 1; min-width: 0; padding: 24px 28px; max-width: 960px; }
 
-    /* States */
-    .spinner { text-align: center; padding: 48px; color: #8b949e; }
-    .spinner::after { content: ''; display: inline-block; width: 22px; height: 22px; border: 3px solid #30363d; border-top-color: #58a6ff; border-radius: 50%; animation: spin .7s linear infinite; margin-left: 10px; vertical-align: middle; }
+    /* ── Welcome ── */
+    .welcome { text-align: center; padding: 80px 20px; }
+    .welcome h1 { font-size: 2rem; font-weight: 800; margin-bottom: 10px; background: linear-gradient(135deg, var(--blue), var(--purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .welcome p { color: var(--muted); font-size: 0.95rem; }
+
+    /* ── Detail header ── */
+    .d-header { margin-bottom: 20px; }
+    .d-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 4px; }
+    .d-sym { font-size: 2rem; font-weight: 800; letter-spacing: -.5px; }
+    .d-company { font-size: 0.82rem; color: var(--muted); margin-bottom: 10px; }
+    .d-price-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+    .d-price { font-size: 2.2rem; font-weight: 700; letter-spacing: -.5px; }
+    .d-change { font-size: 1rem; font-weight: 600; }
+    .badge-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.78rem;
+      text-transform: uppercase; letter-spacing: .04em;
+    }
+    .badge.BULLISH { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-bd); }
+    .badge.BEARISH  { background: var(--red-bg);   color: var(--red);   border: 1px solid var(--red-bd); }
+    .badge.NEUTRAL  { background: #1e2130; color: var(--muted); border: 1px solid var(--border2); }
+    .badge.BUY  { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-bd); }
+    .badge.SELL { background: var(--red-bg);   color: var(--red);   border: 1px solid var(--red-bd); }
+    .badge.HOLD { background: var(--yellow-bg);color: var(--yellow);border: 1px solid var(--yellow-bd); }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+    .tab {
+      background: transparent; border: none; border-bottom: 2px solid transparent;
+      color: var(--muted); font-size: 0.88rem; font-weight: 600; padding: 10px 16px;
+      cursor: pointer; transition: all .15s; margin-bottom: -1px;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Cards / Grid ── */
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .card-title {
+      font-size: 0.66rem; text-transform: uppercase; letter-spacing: .1em;
+      color: var(--faint); margin-bottom: 10px; font-weight: 600;
+    }
+    .metric { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+    .ml { font-size: 0.8rem; color: var(--muted); }
+    .mv { font-size: 0.85rem; font-weight: 600; }
+    hr.dim { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
+
+    /* ── RSI bar ── */
+    .rsi-bar { width: 100%; height: 6px; background: var(--border); border-radius: 3px; margin-top: 10px; position: relative; overflow: hidden; }
+    .rsi-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--blue) 0%, var(--green) 30%, var(--yellow) 70%, var(--red) 100%); width: 100%; }
+    .rsi-marker { position: absolute; top: -4px; width: 3px; height: 14px; background: #fff; border-radius: 2px; transform: translateX(-50%); box-shadow: 0 0 4px rgba(255,255,255,.5); }
+
+    /* ── Signals ── */
+    .sig-list { display: flex; flex-direction: column; gap: 6px; }
+    .sig { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; font-size: 0.84rem; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: var(--green); }
+    .dot.warn { background: var(--yellow); }
+    .dot.bear { background: var(--red); }
+
+    /* ── Analyst bar chart ── */
+    .analyst-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .analyst-bar-fill { height: 6px; border-radius: 3px; min-width: 3px; }
+    .analyst-bar-label { font-size: 0.74rem; color: var(--muted); white-space: nowrap; }
+
+    /* ── Earnings table ── */
+    .eq-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; font-size: 0.82rem; }
+    .eq-row:last-child { border-bottom: none; }
+
+    /* ── Deep research ── */
+    .dr-header {
+      background: linear-gradient(135deg, #10131e 0%, #161b2c 100%);
+      border: 1px solid var(--border2); border-radius: 12px 12px 0 0;
+      padding: 20px 22px; border-bottom: 1px solid var(--border2);
+    }
+    .dr-body { background: var(--card); border: 1px solid var(--border2); border-top: none; border-radius: 0 0 12px 12px; padding: 20px 22px; }
+    .dr-section { margin-bottom: 20px; }
+    .dr-section:last-child { margin-bottom: 0; }
+    .dr-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: .1em; font-weight: 700; margin-bottom: 8px; }
+    .dr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+    .dr-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+    .dr-text { font-size: 0.84rem; line-height: 1.65; color: #c4cdd9; }
+    .list-item { display: flex; gap: 8px; padding: 3px 0; font-size: 0.84rem; line-height: 1.5; }
+    .list-item .arrow { color: var(--blue); flex-shrink: 0; }
+
+    /* ── Token badge ── */
+    .token-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #0d1a2a; border: 1px solid #1a3050;
+      border-radius: 6px; padding: 3px 10px;
+      font-size: 0.7rem; color: var(--muted);
+    }
+    .token-badge .cost { color: var(--blue); font-weight: 600; }
+
+    /* ── States ── */
+    .spinner-wrap { display: flex; align-items: center; justify-content: center; padding: 80px; color: var(--muted); gap: 12px; }
+    .spinner { width: 24px; height: 24px; border: 3px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .err-msg { background: #4a1320; border: 1px solid #f85149; border-radius: 8px; padding: 14px 18px; color: #f85149; margin-bottom: 16px; font-size: 0.9rem; }
+    .err-msg { background: var(--red-bg); border: 1px solid var(--red-bd); border-radius: 10px; padding: 16px 20px; color: var(--red); margin-bottom: 16px; font-size: 0.9rem; }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .sidebar { display: none; }
+      .main { padding: 16px; }
+      .d-price { font-size: 1.6rem; }
+    }
+
+    footer { font-size: 0.68rem; color: var(--faint); text-align: center; padding: 24px 0 12px; }
   </style>
 </head>
 <body>
-<div class="container">
-  <div class="top">
-    <div class="app-title">📈 StockAnalysis</div>
-    <div class="search-wrap">
-      <input id="symInput" type="text" placeholder="Enter symbol (e.g. AAPL)" maxlength="10" />
-      <button class="btn-search" id="searchBtn" onclick="search()">Analyze</button>
-    </div>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="logo">📈 Stock<span>Research</span></div>
+  <div class="search-row">
+    <input id="symInput" type="text" placeholder="Enter symbol (e.g. MSFT)" maxlength="10" />
+    <button class="btn-search" id="searchBtn" onclick="search()">Analyze</button>
+  </div>
+</div>
+
+<!-- Layout -->
+<div class="layout">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-label">Watchlist</div>
+    <div id="stockList"></div>
   </div>
 
-  <div class="saved-label">Saved</div>
-  <div class="stock-list" id="stockList"></div>
-  <div id="detail"></div>
+  <!-- Main -->
+  <div class="main" id="main">
+    <div class="welcome" id="welcome">
+      <h1>AI Stock Research</h1>
+      <p>Select a stock from the watchlist or search for any symbol.</p>
+    </div>
+    <div id="detail" style="display:none"></div>
+  </div>
 </div>
 
 <script>
 const PROJECT = 'stock-research-9eee9';
-const SAVED = ['NVDA', 'CRWD', 'AAPL', 'TSLA', 'SNOW', 'NTAP', 'DELL', 'ADSK'];
+const SAVED = ['ADSK','AAPL','CRWD','DELL','NTAP','NVDA','SNOW','TSLA'];
+const WORKER = 'https://damp-wind-72a2.ajntuh.workers.dev';
 const cache = {};
 let activeSymbol = null;
 
+// Claude Sonnet 4.6 pricing
+const PRICE_IN  = 3.00 / 1e6;  // per token
+const PRICE_OUT = 15.00 / 1e6;
+
 // ── Firestore helpers ──────────────────────────────────────────────────────
 function fromFS(v) {
-  if ('nullValue'   in v) return null;
-  if ('booleanValue'in v) return v.booleanValue;
-  if ('doubleValue' in v) return v.doubleValue;
-  if ('integerValue'in v) return Number(v.integerValue);
-  if ('stringValue' in v) return v.stringValue;
-  if ('arrayValue'  in v) return (v.arrayValue.values||[]).map(fromFS);
-  if ('mapValue'    in v) {
+  if ('nullValue'    in v) return null;
+  if ('booleanValue' in v) return v.booleanValue;
+  if ('doubleValue'  in v) return v.doubleValue;
+  if ('integerValue' in v) return Number(v.integerValue);
+  if ('stringValue'  in v) return v.stringValue;
+  if ('arrayValue'   in v) return (v.arrayValue.values||[]).map(fromFS);
+  if ('mapValue'     in v) {
     const o={};
     for(const [k,fv] of Object.entries(v.mapValue.fields||{})) o[k]=fromFS(fv);
     return o;
   }
   return null;
 }
-
 async function loadFromFirestore(sym) {
   const url = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/technicalAnalysis/${sym}`;
   const res = await fetch(url);
@@ -130,7 +272,6 @@ async function loadFromFirestore(sym) {
   for(const [k,v] of Object.entries(doc.fields)) d[k]=fromFS(v);
   return d;
 }
-
 async function loadDeepResearchFromFirestore(sym) {
   try {
     const url = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/deepResearch/${sym}`;
@@ -144,9 +285,7 @@ async function loadDeepResearchFromFirestore(sym) {
   } catch(_) { return null; }
 }
 
-// ── Yahoo Finance via CORS proxy ───────────────────────────────────────────
-const WORKER = 'https://damp-wind-72a2.ajntuh.workers.dev';
-
+// ── Yahoo Finance via Cloudflare Worker ───────────────────────────────────
 async function fetchFromYahoo(sym) {
   const res = await fetch(`${WORKER}?symbol=${sym}&type=chart`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -155,7 +294,6 @@ async function fetchFromYahoo(sym) {
   if (!result) throw new Error('Symbol not found or no data returned');
   return result;
 }
-
 async function fetchDeepResearchLive(sym) {
   try {
     const url = `${WORKER}?symbol=${sym}&type=summary`;
@@ -204,7 +342,6 @@ async function fetchDeepResearchLive(sym) {
     };
   } catch(_){return null;}
 }
-
 async function fetchFundamentalsLive(sym) {
   try {
     const url = `${WORKER}?symbol=${sym}&type=summary`;
@@ -213,508 +350,465 @@ async function fetchFundamentalsLive(sym) {
     const json = await res.json();
     const r = json?.quoteSummary?.result?.[0];
     if (!r) return {};
-    const ks = r.defaultKeyStatistics || {};
-    const fd = r.financialData || {};
-    const sd = r.summaryDetail || {};
-    const ap = r.assetProfile || {};
-    const v = (obj, key) => obj?.[key]?.raw ?? obj?.[key] ?? null;
-    return {
-      marketCap: v(sd,'marketCap'), trailingPE: v(sd,'trailingPE'), forwardPE: v(sd,'forwardPE'),
-      priceToBook: v(ks,'priceToBook'), eps: v(ks,'trailingEps'), epsForward: v(ks,'forwardEps'),
-      beta: v(ks,'beta'), dividendYield: v(sd,'dividendYield'), revenue: v(fd,'totalRevenue'),
-      revenueGrowth: v(fd,'revenueGrowth'), grossMargin: v(fd,'grossMargins'),
-      operatingMargin: v(fd,'operatingMargins'), profitMargin: v(fd,'profitMargins'),
-      returnOnEquity: v(fd,'returnOnEquity'), returnOnAssets: v(fd,'returnOnAssets'),
-      debtToEquity: v(fd,'debtToEquity'), freeCashflow: v(fd,'freeCashflow'),
-      currentRatio: v(fd,'currentRatio'), shortRatio: v(ks,'shortRatio'),
-      sector: ap.sector ?? null, industry: ap.industry ?? null,
+    const ks=r.defaultKeyStatistics||{}, fd=r.financialData||{}, sd=r.summaryDetail||{}, ap=r.assetProfile||{};
+    const v=(obj,key)=>obj?.[key]?.raw??obj?.[key]??null;
+    return{
+      marketCap:v(sd,'marketCap'),trailingPE:v(sd,'trailingPE'),forwardPE:v(sd,'forwardPE'),
+      priceToBook:v(ks,'priceToBook'),eps:v(ks,'trailingEps'),epsForward:v(ks,'forwardEps'),
+      beta:v(ks,'beta'),dividendYield:v(sd,'dividendYield'),revenue:v(fd,'totalRevenue'),
+      revenueGrowth:v(fd,'revenueGrowth'),grossMargin:v(fd,'grossMargins'),
+      operatingMargin:v(fd,'operatingMargins'),profitMargin:v(fd,'profitMargins'),
+      returnOnEquity:v(fd,'returnOnEquity'),returnOnAssets:v(fd,'returnOnAssets'),
+      debtToEquity:v(fd,'debtToEquity'),freeCashflow:v(fd,'freeCashflow'),
+      currentRatio:v(fd,'currentRatio'),shortRatio:v(ks,'shortRatio'),
+      sector:ap.sector??null,industry:ap.industry??null,
     };
-  } catch(_) { return {}; }
+  } catch(_){return{};}
 }
 
-// ── Technical analysis ─────────────────────────────────────────────────────
+// ── Technical compute ─────────────────────────────────────────────────────
 function computeAnalysis(sym, result) {
   const meta = result.meta;
   const q = result.indicators.quote[0];
   const raw = q.close.map((c,i)=>({c,h:q.high[i],l:q.low[i],v:q.volume[i]})).filter(x=>x.c!=null);
   const c = raw.map(x=>x.c), v = raw.map(x=>x.v);
-
   const sma = (arr,n) => arr.length<n ? null : arr.slice(-n).reduce((a,b)=>a+b,0)/n;
-  function ema(arr,n) {
-    const k=2/(n+1), r=[arr[0]];
-    for(let i=1;i<arr.length;i++) r.push(arr[i]*k+r[i-1]*(1-k));
-    return r;
-  }
-
-  // RSI 14
-  const gains=[], losses=[];
+  function ema(arr,n) { const k=2/(n+1),r=[arr[0]]; for(let i=1;i<arr.length;i++) r.push(arr[i]*k+r[i-1]*(1-k)); return r; }
+  const gains=[],losses=[];
   for(let i=1;i<c.length;i++){const d=c[i]-c[i-1];gains.push(d>0?d:0);losses.push(d<0?-d:0);}
-  const ag=gains.slice(-14).reduce((a,b)=>a+b,0)/14;
-  const al=losses.slice(-14).reduce((a,b)=>a+b,0)/14;
+  const ag=gains.slice(-14).reduce((a,b)=>a+b,0)/14, al=losses.slice(-14).reduce((a,b)=>a+b,0)/14;
   const rsi = al===0?100:100-100/(1+ag/al);
-
-  // MACD
-  const e12=ema(c,12),e26=ema(c,26);
-  const macdArr=e12.map((v,i)=>v-e26[i]);
-  const sig=ema(macdArr,9);
+  const e12=ema(c,12),e26=ema(c,26), macdArr=e12.map((v,i)=>v-e26[i]), sig=ema(macdArr,9);
   const macdLine=macdArr[macdArr.length-1], signal=sig[sig.length-1], histogram=macdLine-signal;
-
-  // Bollinger
   const s20=sma(c,20);
   const std20=Math.sqrt(c.slice(-20).reduce((a,b)=>a+Math.pow(b-s20,2),0)/20);
   const bb_upper=s20+2*std20, bb_lower=s20-2*std20;
-
   const s50=sma(c,50), s200=sma(c,200);
   const avg20v=v.slice(-20).reduce((a,b)=>a+b,0)/20;
   const high52=Math.max(...raw.map(x=>x.h).filter(Boolean));
   const low52=Math.min(...raw.map(x=>x.l).filter(Boolean));
-
-  const current=meta.regularMarketPrice??c[c.length-1];
-  const prevClose=meta.previousClose??c[c.length-2];
-  const change=current-prevClose;
-
+  const current=meta.regularMarketPrice??c[c.length-1], prevClose=meta.previousClose??c[c.length-2], change=current-prevClose;
   const signals=[];
-  if(current>s20) signals.push('Price above 20-day MA (bullish)');
-  else signals.push('Price below 20-day MA (bearish)');
-  if(s50&&s20>s50) signals.push('20 MA above 50 MA (golden cross zone)');
-  else if(s50) signals.push('20 MA below 50 MA (death cross zone)');
-  if(rsi>70) signals.push('RSI overbought (>70)');
-  else if(rsi<30) signals.push('RSI oversold (<30)');
-  else signals.push(`RSI neutral (${rsi.toFixed(1)})`);
+  if(current>s20) signals.push('Price above 20-day MA (bullish)'); else signals.push('Price below 20-day MA (bearish)');
+  if(s50&&s20>s50) signals.push('20 MA above 50 MA (golden cross zone)'); else if(s50) signals.push('20 MA below 50 MA (death cross zone)');
+  if(rsi>70) signals.push('RSI overbought (>70)'); else if(rsi<30) signals.push('RSI oversold (<30)'); else signals.push(`RSI neutral (${rsi.toFixed(1)})`);
   signals.push(histogram>0?'MACD bullish crossover':'MACD bearish crossover');
-  if(current>=bb_upper) signals.push('Price above upper Bollinger Band');
-  else if(current<=bb_lower) signals.push('Price below lower Bollinger Band');
-  else signals.push('Price within Bollinger Bands');
-
+  if(current>=bb_upper) signals.push('Price above upper Bollinger Band'); else if(current<=bb_lower) signals.push('Price below lower Bollinger Band'); else signals.push('Price within Bollinger Bands');
   const bull=signals.filter(s=>s.includes('bullish')||s.includes('golden')).length;
   const bear=signals.filter(s=>s.includes('bearish')||s.includes('death')||s.includes('overbought')).length;
-
-  return {
-    symbol: sym, generatedAt: new Date().toISOString(),
-    price:{current,change,changePct:(change/prevClose)*100,
-      open:meta.regularMarketOpen??c[c.length-1],
-      high:meta.regularMarketDayHigh??raw[raw.length-1].h,
-      low:meta.regularMarketDayLow??raw[raw.length-1].l},
+  return { symbol:sym, generatedAt:new Date().toISOString(),
+    price:{current,change,changePct:(change/prevClose)*100, open:meta.regularMarketOpen??c[c.length-1], high:meta.regularMarketDayHigh??raw[raw.length-1].h, low:meta.regularMarketDayLow??raw[raw.length-1].l},
     movingAverages:{sma20:s20,sma50:s50??null,sma200:s200??null},
     rsi, macd:{macdLine,signal,histogram},
     bollingerBands:{upper:bb_upper,middle:s20,lower:bb_lower},
     volume:{today:v[v.length-1],avg20:avg20v,ratio:v[v.length-1]/avg20v},
     yearRange:{high52,low52,pctFromHigh:((current-high52)/high52)*100},
-    signals, overall: bull>bear?'BULLISH':bear>bull?'BEARISH':'NEUTRAL',
+    signals, overall:bull>bear?'BULLISH':bear>bull?'BEARISH':'NEUTRAL',
   };
 }
 
-// ── Render ─────────────────────────────────────────────────────────────────
-function fmt(n,d=2){return n==null?'N/A':Number(n).toFixed(d);}
-function fmtBig(n){if(n==null)return'N/A';if(n>=1e9)return(n/1e9).toFixed(2)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';return n.toLocaleString();}
+// ── Formatters ────────────────────────────────────────────────────────────
+const fmt = (n,d=2) => n==null?'N/A':Number(n).toFixed(d);
+const fmtBig = n => { if(n==null)return'N/A'; if(n>=1e9)return(n/1e9).toFixed(2)+'B'; if(n>=1e6)return(n/1e6).toFixed(1)+'M'; return n.toLocaleString(); };
+const fmtPct = n => n==null?'N/A':(n*100).toFixed(1)+'%';
+const fmtCap = n => { if(n==null)return'N/A'; if(n>=1e12)return'$'+(n/1e12).toFixed(2)+'T'; if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B'; if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M'; return'$'+n.toLocaleString(); };
+const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+const fmtDateShort = iso => iso ? new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+const tokenBadge = (u, label='') => {
+  if (!u || !u.inputTokens) return '';
+  const cost = u.costUsd ?? (u.inputTokens*PRICE_IN + u.outputTokens*PRICE_OUT);
+  return `<span class="token-badge">${label ? label+' · ' : ''}${(u.inputTokens/1000).toFixed(1)}k in / ${(u.outputTokens/1000).toFixed(1)}k out · <span class="cost">$${cost.toFixed(4)}</span></span>`;
+};
+const row = (label, val) => `<div class="metric"><span class="ml">${label}</span><span class="mv">${val}</span></div>`;
+const pctColor = n => n==null?'N/A':`<span class="${n>=0?'pos':'neg'}">${fmtPct(n)}</span>`;
+const listItems = arr => (arr||[]).map(i=>`<div class="list-item"><span class="arrow">›</span><span>${i}</span></div>`).join('');
 
-function fmtPct(n) { return n==null?'N/A':(n*100).toFixed(1)+'%'; }
-function fmtCap(n) {
-  if(n==null) return 'N/A';
-  if(n>=1e12) return '$'+(n/1e12).toFixed(2)+'T';
-  if(n>=1e9)  return '$'+(n/1e9).toFixed(2)+'B';
-  if(n>=1e6)  return '$'+(n/1e6).toFixed(1)+'M';
-  return '$'+n.toLocaleString();
-}
-
-function renderNarrative(n) {
-  if (!n) return '';
-  const recColor = n.recommendation === 'BUY' ? '#3fb950' : n.recommendation === 'SELL' ? '#f85149' : '#f0c000';
-  const recBg    = n.recommendation === 'BUY' ? '#1a4731' : n.recommendation === 'SELL' ? '#4a1320' : '#3a2f0a';
-
-  const listItems = (arr) => (arr || []).map(i => `
-    <div style="display:flex;gap:8px;padding:4px 0;font-size:0.85rem">
-      <span style="color:#58a6ff;flex-shrink:0">›</span>
-      <span>${i}</span>
-    </div>`).join('');
+// ── Render helpers ────────────────────────────────────────────────────────
+function renderOverview(d) {
+  const n = d.narrative || {};
+  const recColor = n.recommendation==='BUY'?'var(--green)':n.recommendation==='SELL'?'var(--red)':'var(--yellow)';
+  const recBg    = n.recommendation==='BUY'?'var(--green-bg)':n.recommendation==='SELL'?'var(--red-bg)':'var(--yellow-bg)';
+  const recBd    = n.recommendation==='BUY'?'var(--green-bd)':n.recommendation==='SELL'?'var(--red-bd)':'var(--yellow-bd)';
 
   return `
-    <div style="margin-bottom:16px;background:linear-gradient(135deg,#1c2333 0%,#2c2c2e 100%);border:1px solid #3a3a3c;border-radius:10px;padding:18px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:0.72rem;text-transform:uppercase;letter-spacing:.08em;color:#58a6ff;font-weight:700">Claude AI Research</span>
-        </div>
-        ${n.recommendation ? `<span style="padding:5px 16px;border-radius:20px;font-weight:700;font-size:0.85rem;background:${recBg};color:${recColor};border:1px solid ${recColor}">${n.recommendation}</span>` : ''}
-      </div>
+    ${n.executiveSummary ? `
+      <div class="card" style="margin-bottom:16px;border-color:var(--border2)">
+        <div class="card-title" style="margin-bottom:8px">Executive Summary</div>
+        <p style="font-size:0.88rem;line-height:1.65;color:var(--text)">${n.executiveSummary}</p>
+      </div>` : ''}
 
-      ${n.executiveSummary ? `<p style="font-size:0.9rem;line-height:1.6;color:#e6edf3;margin-bottom:14px">${n.executiveSummary}</p>` : ''}
-
-      ${n.recommendationRationale ? `
-        <div style="background:#0d1117;border-left:3px solid ${recColor};padding:10px 14px;border-radius:0 6px 6px 0;margin-bottom:14px;font-size:0.85rem;color:#8b949e;line-height:1.5">
-          ${n.recommendationRationale}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:16px">
+      ${n.investmentThesis ? `
+        <div class="card" style="border-color:var(--green-bd);background:var(--green-bg)">
+          <div class="card-title" style="color:var(--green);margin-bottom:8px">Bull Case</div>
+          <p class="dr-text">${n.investmentThesis}</p>
         </div>` : ''}
+      ${n.bearCase ? `
+        <div class="card" style="border-color:var(--red-bd);background:var(--red-bg)">
+          <div class="card-title" style="color:var(--red);margin-bottom:8px">Bear Case</div>
+          <p class="dr-text">${n.bearCase}</p>
+        </div>` : ''}
+    </div>
 
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:14px">
-        ${n.investmentThesis ? `
-          <div>
-            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:.08em;color:#3fb950;margin-bottom:6px;font-weight:700">Bull Case</div>
-            <p style="font-size:0.83rem;line-height:1.55;color:#8b949e">${n.investmentThesis}</p>
-          </div>` : ''}
-        ${n.bearCase ? `
-          <div>
-            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:.08em;color:#f85149;margin-bottom:6px;font-weight:700">Bear Case</div>
-            <p style="font-size:0.83rem;line-height:1.55;color:#8b949e">${n.bearCase}</p>
-          </div>` : ''}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:16px">
+      ${n.catalysts?.length ? `
+        <div class="card">
+          <div class="card-title" style="color:var(--blue);margin-bottom:8px">Catalysts</div>
+          ${listItems(n.catalysts)}
+        </div>` : ''}
+      ${n.risks?.length ? `
+        <div class="card">
+          <div class="card-title" style="color:var(--yellow);margin-bottom:8px">Risks</div>
+          ${listItems(n.risks)}
+        </div>` : ''}
+    </div>
+
+    ${n.recommendation ? `
+      <div style="background:${recBg};border:1px solid ${recBd};border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+        <div>
+          <div style="font-size:0.7rem;color:var(--faint);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">Claude Recommendation</div>
+          <div style="font-size:0.88rem;color:var(--muted)">${n.recommendationRationale||''}</div>
+        </div>
+        <span class="badge ${n.recommendation}">${n.recommendation}</span>
+      </div>` : ''}
+
+    ${d.claudeUsage ? `<div style="margin-bottom:8px">${tokenBadge(d.claudeUsage, 'Narrative')}</div>` : ''}
+  `;
+}
+
+function renderTechnical(d) {
+  const rsiPct = Math.min(Math.max(d.rsi,0),100);
+  const dotClass = s => s.includes('bearish')||s.includes('death')||s.includes('overbought')?'bear':s.includes('oversold')?'warn':'';
+  return `
+    <div class="grid">
+      <div class="card">
+        <div class="card-title">Price Levels</div>
+        ${row('Open',  '$'+fmt(d.price.open))}
+        ${row('High',  '$'+fmt(d.price.high))}
+        ${row('Low',   '$'+fmt(d.price.low))}
+        ${row('52W High', '$'+fmt(d.yearRange.high52))}
+        ${row('52W Low',  '$'+fmt(d.yearRange.low52))}
+        ${row('From High', `<span class="neg">${fmt(d.yearRange.pctFromHigh)}%</span>`)}
       </div>
-
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:14px">
-        ${n.catalysts?.length ? `
-          <div>
-            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:.08em;color:#58a6ff;margin-bottom:6px;font-weight:700">Catalysts</div>
-            ${listItems(n.catalysts)}
-          </div>` : ''}
-        ${n.risks?.length ? `
-          <div>
-            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:.08em;color:#f0c000;margin-bottom:6px;font-weight:700">Risks</div>
-            ${listItems(n.risks)}
-          </div>` : ''}
+      <div class="card">
+        <div class="card-title">Moving Averages</div>
+        ${row('SMA 20',  '$'+fmt(d.movingAverages.sma20))}
+        ${row('SMA 50',  '$'+fmt(d.movingAverages.sma50))}
+        ${row('SMA 200', d.movingAverages.sma200!=null?'$'+fmt(d.movingAverages.sma200):'N/A')}
+        <hr class="dim"/>
+        <div class="card-title">Bollinger Bands</div>
+        ${row('Upper', '$'+fmt(d.bollingerBands.upper))}
+        ${row('Middle','$'+fmt(d.bollingerBands.middle))}
+        ${row('Lower', '$'+fmt(d.bollingerBands.lower))}
       </div>
-
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">
-        ${n.technicalOutlook ? `
-          <div>
-            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:.08em;color:#8b949e;margin-bottom:5px;font-weight:700">Technical Outlook</div>
-            <p style="font-size:0.82rem;line-height:1.5;color:#8b949e">${n.technicalOutlook}</p>
-          </div>` : ''}
-        ${n.fundamentalAssessment ? `
-          <div>
-            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:.08em;color:#8b949e;margin-bottom:5px;font-weight:700">Fundamental Assessment</div>
-            <p style="font-size:0.82rem;line-height:1.5;color:#8b949e">${n.fundamentalAssessment}</p>
-          </div>` : ''}
+      <div class="card">
+        <div class="card-title">RSI (14-day)</div>
+        <div style="font-size:2rem;font-weight:700;margin-bottom:4px">${fmt(d.rsi,1)}
+          <span style="font-size:0.75rem;font-weight:400;color:${d.rsi>70?'var(--yellow)':d.rsi<30?'var(--blue)':'var(--muted)'}">${d.rsi>70?'Overbought':d.rsi<30?'Oversold':'Neutral'}</span>
+        </div>
+        <div class="rsi-bar"><div class="rsi-fill"></div><div class="rsi-marker" style="left:${rsiPct}%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:0.66rem;color:var(--faint);margin-top:4px"><span>0</span><span>30</span><span>70</span><span>100</span></div>
+        <hr class="dim"/>
+        <div class="card-title">MACD</div>
+        ${row('MACD',      `<span class="${d.macd.macdLine>=0?'pos':'neg'}">${fmt(d.macd.macdLine,4)}</span>`)}
+        ${row('Signal',    fmt(d.macd.signal,4))}
+        ${row('Histogram', `<span class="${d.macd.histogram>=0?'pos':'neg'}">${fmt(d.macd.histogram,4)}</span>`)}
+      </div>
+      <div class="card">
+        <div class="card-title">Volume</div>
+        ${row('Today',    fmtBig(d.volume.today))}
+        ${row('20D Avg',  fmtBig(d.volume.avg20))}
+        ${row('Ratio',    `<span class="${d.volume.ratio>=1?'pos':'neg'}">${fmt(d.volume.ratio,2)}x</span>`)}
+      </div>
+    </div>
+    <div style="margin-top:16px">
+      <div class="card-title" style="margin-bottom:10px">Technical Signals</div>
+      <div class="sig-list">
+        ${(d.signals||[]).map(s=>`<div class="sig"><span class="dot ${dotClass(s)}"></span><span>${s}</span></div>`).join('')}
       </div>
     </div>
   `;
 }
 
-function renderDeepResearch(dr) {
-  if (!dr) return '';
-  const ar = dr.analystRatings || {};
-  const ow = dr.ownership || {};
-  const ea = dr.earnings || {};
-  const row = (label, val) => `<div class="metric"><span class="ml">${label}</span><span class="mv">${val}</span></div>`;
+function renderFundamentals(f, dr) {
+  if (!f || Object.keys(f).length === 0) return '<div style="color:var(--faint);padding:20px">No fundamentals data available.</div>';
+  const ar = dr?.analystRatings || {};
+  const ow = dr?.ownership || {};
+  const ea = dr?.earnings || {};
+  const sentimentScore = dr?.sentimentScore;
+  const sentimentLabel = dr?.sentimentLabel;
+  const scoreColor = sentimentScore>=75?'var(--green)':sentimentScore>=55?'var(--blue)':sentimentScore>=40?'var(--muted)':sentimentScore>=20?'var(--yellow)':'var(--red)';
 
-  // Sentiment pill
-  const scoreColor = dr.sentimentScore>=75?'#3fb950':dr.sentimentScore>=55?'#58a6ff':dr.sentimentScore>=40?'#8b949e':dr.sentimentScore>=20?'#f0c000':'#f85149';
-  const scoreBg    = dr.sentimentScore>=75?'#1a4731':dr.sentimentScore>=55?'#1c2333':dr.sentimentScore>=40?'#2d2f35':dr.sentimentScore>=20?'#3a2f0a':'#4a1320';
-  const sentimentPill = dr.sentimentScore!=null
-    ? `<span style="padding:4px 12px;border-radius:20px;font-size:0.8rem;font-weight:700;background:${scoreBg};color:${scoreColor};border:1px solid ${scoreColor}">${dr.sentimentScore}/100 · ${dr.sentimentLabel}</span>`
-    : '';
-
-  const consensusColor=['Strong Buy','Buy'].includes(ar.consensus)?'#3fb950':ar.consensus==='Hold'?'#8b949e':'#f85149';
   const total=(ar.strongBuy||0)+(ar.buy||0)+(ar.hold||0)+(ar.sell||0)+(ar.strongSell||0);
   const barRow=(count,color,label)=>{
     if(!count||!total) return '';
     const pct=(count/total*100).toFixed(1);
-    return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
-      <div style="width:${pct}%;min-width:2px;height:8px;background:${color};border-radius:2px"></div>
-      <span style="font-size:0.75rem;color:#8b949e">${label} ${count}</span>
-    </div>`;
+    return `<div class="analyst-bar"><div class="analyst-bar-fill" style="width:${pct}%;background:${color}"></div><span class="analyst-bar-label">${label} ${count}</span></div>`;
   };
-
   const quartersHtml=(ea.quarters||[]).map(q=>{
-    const bc=q.beat==='Beat'?'#3fb950':q.beat==='Miss'?'#f85149':'#8b949e';
-    const sp=q.surprisePct!=null?`<span style="color:${bc}">${q.surprisePct>0?'+':''}${q.surprisePct.toFixed(1)}%</span>`:'';
-    return `<div class="metric" style="border-bottom:1px solid #3a3a3c;padding:5px 0;flex-wrap:wrap;gap:4px">
-      <span class="ml" style="min-width:52px">${q.period||'—'}</span>
-      <span class="mv" style="min-width:48px">${q.epsActual!=null?'$'+q.epsActual.toFixed(2):'—'}</span>
-      <span class="ml" style="min-width:56px">est $${q.epsEstimate!=null?q.epsEstimate.toFixed(2):'—'}</span>
-      <span style="font-size:0.78rem;font-weight:600;color:${bc};min-width:42px">${q.beat||'—'}</span>
-      ${sp}
+    const bc=q.beat==='Beat'?'var(--green)':q.beat==='Miss'?'var(--red)':'var(--muted)';
+    return `<div class="eq-row">
+      <span style="min-width:52px;font-size:0.8rem;color:var(--muted)">${q.period||'—'}</span>
+      <span style="min-width:52px;font-size:0.82rem;font-weight:600">${q.epsActual!=null?'$'+q.epsActual.toFixed(2):'—'}</span>
+      <span style="min-width:60px;font-size:0.78rem;color:var(--muted)">est $${q.epsEstimate!=null?q.epsEstimate.toFixed(2):'—'}</span>
+      <span style="font-weight:600;font-size:0.8rem;color:${bc}">${q.beat||'—'} ${q.surprisePct!=null?`(${q.surprisePct>0?'+':''}${q.surprisePct.toFixed(1)}%)`:''}</span>
     </div>`;
   }).join('');
-
-  const upgradesHtml=(dr.upgrades||[]).map(u=>{
-    const ac=u.action==='Upgraded'||u.action==='Initiated'?'#3fb950':u.action==='Downgraded'?'#f85149':'#8b949e';
-    const fromTo=u.fromGrade?`${u.fromGrade} → <strong>${u.toGrade}</strong>`:`→ <strong>${u.toGrade}</strong>`;
-    return `<div style="display:flex;align-items:baseline;gap:8px;padding:6px 0;border-bottom:1px solid #3a3a3c;flex-wrap:wrap;font-size:0.82rem">
-      <span style="font-weight:600;min-width:130px;color:#e6edf3">${u.firm||'—'}</span>
+  const upgradesHtml=(dr?.upgrades||[]).map(u=>{
+    const ac=u.action==='Upgraded'||u.action==='Initiated'?'var(--green)':u.action==='Downgraded'?'var(--red)':'var(--muted)';
+    return `<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;font-size:0.81rem;align-items:baseline">
+      <span style="font-weight:600;min-width:120px">${u.firm||'—'}</span>
       <span style="color:${ac};min-width:80px;font-weight:600">${u.action}</span>
-      <span style="color:#8b949e;flex:1">${fromTo}</span>
-      <span style="color:#484f58;white-space:nowrap">${u.date||''}</span>
+      <span style="color:var(--muted);flex:1">${u.fromGrade?u.fromGrade+' → ':''}${u.toGrade}</span>
+      <span style="color:var(--faint)">${u.date||''}</span>
     </div>`;
   }).join('');
 
+  const consensusColor=['Strong Buy','Buy'].includes(ar.consensus)?'var(--green)':ar.consensus==='Hold'?'var(--muted)':'var(--red)';
+
   return `
-    <div style="margin-bottom:16px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-        <div class="card-title" style="margin-bottom:0">Deep Research</div>
-        ${sentimentPill}
+    ${f.sector ? `<div style="font-size:0.78rem;color:var(--faint);margin-bottom:16px">${f.sector}${f.industry?' · '+f.industry:''}</div>` : ''}
+    <div class="grid">
+      <div class="card">
+        <div class="card-title">Valuation</div>
+        ${row('Market Cap',    fmtCap(f.marketCap))}
+        ${row('Trailing P/E',  f.trailingPE!=null?fmt(f.trailingPE,1):'N/A')}
+        ${row('Forward P/E',   f.forwardPE!=null?fmt(f.forwardPE,1):'N/A')}
+        ${row('Price / Book',  f.priceToBook!=null?fmt(f.priceToBook,2):'N/A')}
+        ${row('EPS (TTM)',     f.eps!=null?'$'+fmt(f.eps,2):'N/A')}
+        ${row('EPS (Fwd)',     f.epsForward!=null?'$'+fmt(f.epsForward,2):'N/A')}
+        ${row('Beta',          f.beta!=null?fmt(f.beta,2):'N/A')}
+        ${row('Dividend Yield',f.dividendYield!=null?fmtPct(f.dividendYield):'—')}
       </div>
-      <div class="grid">
-        <div class="card">
-          <div class="card-title">Analyst Ratings</div>
-          <div style="font-size:1.1rem;font-weight:700;color:${consensusColor};margin-bottom:2px">${ar.consensus||'N/A'}</div>
-          <div style="font-size:0.75rem;color:#8b949e;margin-bottom:10px">${ar.numberOfAnalysts!=null?ar.numberOfAnalysts+' analysts':''}</div>
-          ${barRow(ar.strongBuy, '#1a7a3a','Strong Buy')}
-          ${barRow(ar.buy,       '#3fb950','Buy')}
-          ${barRow(ar.hold,      '#8b949e','Hold')}
-          ${barRow(ar.sell,      '#f85149','Sell')}
-          ${barRow(ar.strongSell,'#8b0000','Strong Sell')}
-          <hr class="dim"/>
-          ${row('Target High', ar.targetHigh!=null?'$'+fmt(ar.targetHigh):'N/A')}
-          ${row('Target Avg',  ar.targetMean!=null?'$'+fmt(ar.targetMean):'N/A')}
-          ${row('Target Low',  ar.targetLow !=null?'$'+fmt(ar.targetLow) :'N/A')}
-          ${ar.upsidePct!=null?row('Upside/Down',`<span class="${ar.upsidePct>=0?'pos':'neg'}">${ar.upsidePct>=0?'+':''}${fmt(ar.upsidePct,1)}%</span>`):''}
-        </div>
-        <div class="card">
-          <div class="card-title">Ownership</div>
-          ${row('Institutional', ow.institutionalPct!=null?fmtPct(ow.institutionalPct):'N/A')}
-          ${row('Insider',       ow.insiderPct!=null      ?fmtPct(ow.insiderPct)      :'N/A')}
-          <hr class="dim"/>
-          ${row('Short % Float', ow.shortFloatPct!=null?fmtPct(ow.shortFloatPct):'N/A')}
-          ${row('Short Ratio',   ow.shortRatio!=null?fmt(ow.shortRatio,1)+' days':'N/A')}
-        </div>
-        <div class="card">
-          <div class="card-title">Earnings</div>
-          ${ea.nextEarningsDate?`<div style="font-size:0.8rem;color:#58a6ff;margin-bottom:8px">Next: ${new Date(ea.nextEarningsDate+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>`:''}
-          <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:.06em;color:#484f58;margin-bottom:4px">Period · Actual · Est · Result</div>
-          ${quartersHtml||'<div style="color:#484f58;font-size:0.8rem">No data</div>'}
-        </div>
+      <div class="card">
+        <div class="card-title">Financials</div>
+        ${row('Revenue (TTM)',   fmtCap(f.revenue))}
+        ${row('Revenue Growth',  pctColor(f.revenueGrowth))}
+        ${row('Gross Margin',    fmtPct(f.grossMargin))}
+        ${row('Op. Margin',      fmtPct(f.operatingMargin))}
+        ${row('Profit Margin',   fmtPct(f.profitMargin))}
+        ${row('ROE',             fmtPct(f.returnOnEquity))}
+        ${row('ROA',             fmtPct(f.returnOnAssets))}
+        ${row('Free Cash Flow',  fmtCap(f.freeCashflow))}
+        ${row('Debt / Equity',   f.debtToEquity!=null?fmt(f.debtToEquity,2):'N/A')}
+        ${row('Current Ratio',   f.currentRatio!=null?fmt(f.currentRatio,2):'N/A')}
       </div>
-      ${upgradesHtml?`<div class="card" style="margin-top:12px"><div class="card-title" style="margin-bottom:8px">Recent Analyst Actions</div>${upgradesHtml}</div>`:''}
+      <div class="card">
+        <div class="card-title">Analyst Ratings${ar.numberOfAnalysts?` <span style="color:var(--faint);font-size:0.7rem">${ar.numberOfAnalysts} analysts</span>`:''}</div>
+        ${ar.consensus ? `<div style="font-size:1.15rem;font-weight:700;color:${consensusColor};margin-bottom:8px">${ar.consensus}</div>` : ''}
+        ${barRow(ar.strongBuy,'#1a7a3a','Strong Buy')}
+        ${barRow(ar.buy,'var(--green)','Buy')}
+        ${barRow(ar.hold,'var(--muted)','Hold')}
+        ${barRow(ar.sell,'var(--red)','Sell')}
+        ${barRow(ar.strongSell,'#8b0000','Strong Sell')}
+        <hr class="dim"/>
+        ${row('Target High', ar.targetHigh!=null?'$'+fmt(ar.targetHigh):'N/A')}
+        ${row('Target Avg',  ar.targetMean!=null?'$'+fmt(ar.targetMean):'N/A')}
+        ${row('Target Low',  ar.targetLow !=null?'$'+fmt(ar.targetLow) :'N/A')}
+        ${ar.upsidePct!=null?row('Upside/Down',`<span class="${ar.upsidePct>=0?'pos':'neg'}">${ar.upsidePct>=0?'+':''}${fmt(ar.upsidePct,1)}%</span>`):''}
+        ${sentimentScore!=null ? `<hr class="dim"/>${row('Sentiment Score', `<span style="color:${scoreColor};font-weight:700">${sentimentScore}/100 · ${sentimentLabel}</span>`)}` : ''}
+      </div>
+      <div class="card">
+        <div class="card-title">Ownership & Short</div>
+        ${row('Institutional', ow.institutionalPct!=null?fmtPct(ow.institutionalPct):'N/A')}
+        ${row('Insider',       ow.insiderPct!=null?fmtPct(ow.insiderPct):'N/A')}
+        <hr class="dim"/>
+        ${row('Short % Float', ow.shortFloatPct!=null?fmtPct(ow.shortFloatPct):'N/A')}
+        ${row('Short Ratio',   ow.shortRatio!=null?fmt(ow.shortRatio,1)+' days':'N/A')}
+        <hr class="dim"/>
+        <div class="card-title" style="margin-top:4px">Earnings</div>
+        ${ea.nextEarningsDate?`<div style="font-size:0.78rem;color:var(--blue);margin-bottom:8px">Next: ${fmtDate(ea.nextEarningsDate)}</div>`:''}
+        <div style="font-size:0.66rem;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);margin-bottom:4px">Period · Actual · Est · Result</div>
+        ${quartersHtml||'<div style="color:var(--faint);font-size:0.8rem">No data</div>'}
+      </div>
     </div>
+    ${upgradesHtml?`<div class="card" style="margin-top:12px"><div class="card-title" style="margin-bottom:8px">Recent Analyst Actions</div>${upgradesHtml}</div>`:''}
   `;
 }
 
-function renderFundamentals(f) {
-  if (!f || Object.keys(f).length === 0) return '';
-  const row = (label, val) => `<div class="metric"><span class="ml">${label}</span><span class="mv">${val}</span></div>`;
-  const pctColor = (n) => n==null?'N/A':`<span class="${n>=0?'pos':'neg'}">${fmtPct(n)}</span>`;
-  return `
-    <div style="margin-bottom:16px">
-      <div class="card-title" style="margin-bottom:9px">Fundamentals${f.sector?` <span style="color:#484f58;font-size:0.7rem;text-transform:none">${f.sector} · ${f.industry||''}</span>`:''}
-      </div>
-      <div class="grid">
-        <div class="card">
-          <div class="card-title">Valuation</div>
-          ${row('Market Cap', fmtCap(f.marketCap))}
-          ${row('Trailing P/E', f.trailingPE!=null?fmt(f.trailingPE,1):'N/A')}
-          ${row('Forward P/E', f.forwardPE!=null?fmt(f.forwardPE,1):'N/A')}
-          ${row('Price / Book', f.priceToBook!=null?fmt(f.priceToBook,2):'N/A')}
-          ${row('EPS (TTM)', f.eps!=null?'$'+fmt(f.eps,2):'N/A')}
-          ${row('EPS (Fwd)', f.epsForward!=null?'$'+fmt(f.epsForward,2):'N/A')}
-          ${row('Beta', f.beta!=null?fmt(f.beta,2):'N/A')}
-          ${row('Dividend Yield', f.dividendYield!=null?fmtPct(f.dividendYield):'—')}
-        </div>
-        <div class="card">
-          <div class="card-title">Financials</div>
-          ${row('Revenue (TTM)', fmtCap(f.revenue))}
-          ${row('Revenue Growth', pctColor(f.revenueGrowth))}
-          ${row('Gross Margin', fmtPct(f.grossMargin))}
-          ${row('Operating Margin', fmtPct(f.operatingMargin))}
-          ${row('Profit Margin', fmtPct(f.profitMargin))}
-          ${row('Return on Equity', fmtPct(f.returnOnEquity))}
-          ${row('Return on Assets', fmtPct(f.returnOnAssets))}
-          ${row('Free Cash Flow', fmtCap(f.freeCashflow))}
-          ${row('Debt / Equity', f.debtToEquity!=null?fmt(f.debtToEquity,2):'N/A')}
-          ${row('Current Ratio', f.currentRatio!=null?fmt(f.currentRatio,2):'N/A')}
-          ${row('Short Ratio', f.shortRatio!=null?fmt(f.shortRatio,2):'N/A')}
-        </div>
-      </div>
-    </div>
-  `;
-}
+function renderDeepResearch(fdr) {
+  if (!fdr || !fdr.report) return '<div style="color:var(--faint);padding:20px">No deep research available for this symbol. Run <code>bun run deep-research.ts SYMBOL</code> to generate.</div>';
+  const r = fdr.report;
+  const u = fdr.claudeUsage;
+  const recColor = r.recommendation==='BUY'?'var(--green)':r.recommendation==='SELL'?'var(--red)':'var(--yellow)';
+  const recBg    = r.recommendation==='BUY'?'var(--green-bg)':r.recommendation==='SELL'?'var(--red-bg)':'var(--yellow-bg)';
+  const recBd    = r.recommendation==='BUY'?'var(--green-bd)':r.recommendation==='SELL'?'var(--red-bd)':'var(--yellow-bd)';
 
-function renderFullDeepResearch(dr) {
-  if (!dr || !dr.report) return '';
-  const r = dr.report;
-  const recColor = r.recommendation === 'BUY' ? '#3fb950' : r.recommendation === 'SELL' ? '#f85149' : '#f0c000';
-  const recBg    = r.recommendation === 'BUY' ? '#1a4731' : r.recommendation === 'SELL' ? '#4a1320' : '#3a2f0a';
-
-  const listItems = (arr) => (arr || []).map(i => `
-    <div style="display:flex;gap:8px;padding:4px 0;font-size:0.84rem">
-      <span style="color:#58a6ff;flex-shrink:0">›</span>
-      <span style="color:#c9d1d9">${i}</span>
-    </div>`).join('');
-
-  const section = (title, content, color='#8b949e') => content ? `
-    <div style="margin-bottom:16px">
-      <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:${color};font-weight:700;margin-bottom:6px">${title}</div>
-      <p style="font-size:0.85rem;line-height:1.6;color:#c9d1d9">${content}</p>
+  const section = (title, content, color='var(--blue)') => content ? `
+    <div class="dr-section">
+      <div class="dr-label" style="color:${color}">${title}</div>
+      <p class="dr-text">${content}</p>
     </div>` : '';
 
-  const genDate = dr.generatedAt ? new Date(dr.generatedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
-
   return `
-    <div style="margin-bottom:16px;border:1px solid #3a3a3c;border-radius:10px;overflow:hidden">
-      <!-- Header -->
-      <div style="background:linear-gradient(135deg,#161b22 0%,#1c2333 100%);padding:18px 20px;border-bottom:1px solid #3a3a3c">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+    <div style="border:1px solid var(--border2);border-radius:12px;overflow:hidden;margin-bottom:4px">
+      <div class="dr-header">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:10px">
           <div>
-            <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:#58a6ff;font-weight:700;margin-bottom:4px">Claude Deep Research · SEC EDGAR + 10-K Analysis</div>
-            <div style="font-size:1.05rem;font-weight:700;color:#e6edf3">${r.reportTitle || (dr.symbol + ' Deep Research Report')}</div>
+            <div style="font-size:0.66rem;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);font-weight:700;margin-bottom:5px">SEC EDGAR + 10-K · Claude AI Analysis</div>
+            <div style="font-size:1rem;font-weight:700">${r.reportTitle||fdr.symbol+' Deep Research'}</div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            ${r.priceTarget ? `<div style="font-size:0.82rem;color:#8b949e">Price Target: <span style="color:#e6edf3;font-weight:700">$${r.priceTarget}</span></div>` : ''}
-            ${r.recommendation ? `<span style="padding:6px 18px;border-radius:20px;font-weight:700;font-size:0.9rem;background:${recBg};color:${recColor};border:1px solid ${recColor}">${r.recommendation}</span>` : ''}
+            ${r.priceTarget ? `<div style="font-size:0.85rem;color:var(--muted)">Target <span style="color:var(--text);font-weight:700">$${r.priceTarget}</span></div>` : ''}
+            ${r.recommendation ? `<span class="badge ${r.recommendation}">${r.recommendation}</span>` : ''}
           </div>
         </div>
-        ${r.executiveSummary ? `<p style="font-size:0.88rem;line-height:1.6;color:#8b949e">${r.executiveSummary}</p>` : ''}
-        ${genDate ? `<div style="font-size:0.7rem;color:#484f58;margin-top:8px">Generated ${genDate} · Not financial advice</div>` : ''}
+        ${r.executiveSummary ? `<p style="font-size:0.86rem;line-height:1.65;color:var(--muted)">${r.executiveSummary}</p>` : ''}
+        <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap">
+          ${fdr.generatedAt ? `<span style="font-size:0.7rem;color:var(--faint)">Generated ${fmtDate(fdr.generatedAt)}</span>` : ''}
+          ${tokenBadge(u, 'Deep Research')}
+        </div>
       </div>
 
-      <!-- Body -->
-      <div style="padding:18px 20px;background:#1c1c1e">
-
-        <!-- Investment Thesis + Bear Case -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:18px">
+      <div class="dr-body">
+        <div class="dr-grid" style="margin-bottom:20px">
           ${r.investmentThesis ? `
-            <div style="background:#1a2a1a;border:1px solid #2d4a2d;border-radius:8px;padding:14px">
-              <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:#3fb950;font-weight:700;margin-bottom:8px">Investment Thesis (Bull Case)</div>
-              <p style="font-size:0.84rem;line-height:1.6;color:#c9d1d9">${r.investmentThesis}</p>
+            <div class="dr-box" style="border-color:var(--green-bd);background:var(--green-bg)">
+              <div class="dr-label" style="color:var(--green)">Investment Thesis</div>
+              <p class="dr-text">${r.investmentThesis}</p>
             </div>` : ''}
           ${r.bearCase ? `
-            <div style="background:#2a1a1a;border:1px solid #4a2d2d;border-radius:8px;padding:14px">
-              <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:#f85149;font-weight:700;margin-bottom:8px">Bear Case</div>
-              <p style="font-size:0.84rem;line-height:1.6;color:#c9d1d9">${r.bearCase}</p>
+            <div class="dr-box" style="border-color:var(--red-bd);background:var(--red-bg)">
+              <div class="dr-label" style="color:var(--red)">Bear Case</div>
+              <p class="dr-text">${r.bearCase}</p>
             </div>` : ''}
         </div>
 
-        <!-- Revenue + Profitability -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:18px">
+        <div class="dr-grid" style="margin-bottom:20px">
           ${r.revenueAnalysis ? `
-            <div style="background:#2c2c2e;border:1px solid #3a3a3c;border-radius:8px;padding:14px">
-              <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:#58a6ff;font-weight:700;margin-bottom:8px">Revenue Analysis</div>
-              ${r.revenueAnalysis.fiveYearTrend ? `<p style="font-size:0.84rem;line-height:1.55;color:#c9d1d9;margin-bottom:8px">${r.revenueAnalysis.fiveYearTrend}</p>` : ''}
-              ${r.revenueAnalysis.recentQuarters ? `<p style="font-size:0.82rem;line-height:1.5;color:#8b949e">${r.revenueAnalysis.recentQuarters}</p>` : ''}
+            <div class="dr-box">
+              <div class="dr-label" style="color:var(--blue)">Revenue Analysis</div>
+              ${r.revenueAnalysis.fiveYearTrend ? `<p class="dr-text" style="margin-bottom:8px">${r.revenueAnalysis.fiveYearTrend}</p>` : ''}
+              ${r.revenueAnalysis.recentQuarters ? `<p class="dr-text" style="color:var(--muted)">${r.revenueAnalysis.recentQuarters}</p>` : ''}
               ${r.revenueAnalysis.growthDrivers?.length ? `<div style="margin-top:8px">${listItems(r.revenueAnalysis.growthDrivers)}</div>` : ''}
             </div>` : ''}
           ${r.profitabilityAnalysis ? `
-            <div style="background:#2c2c2e;border:1px solid #3a3a3c;border-radius:8px;padding:14px">
-              <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:#58a6ff;font-weight:700;margin-bottom:8px">Profitability & FCF</div>
-              ${r.profitabilityAnalysis.marginTrends ? `<p style="font-size:0.84rem;line-height:1.55;color:#c9d1d9;margin-bottom:8px">${r.profitabilityAnalysis.marginTrends}</p>` : ''}
-              ${r.profitabilityAnalysis.freecashflow ? `<p style="font-size:0.82rem;line-height:1.5;color:#8b949e">${r.profitabilityAnalysis.freecashflow}</p>` : ''}
+            <div class="dr-box">
+              <div class="dr-label" style="color:var(--blue)">Profitability & FCF</div>
+              ${r.profitabilityAnalysis.marginTrends ? `<p class="dr-text" style="margin-bottom:8px">${r.profitabilityAnalysis.marginTrends}</p>` : ''}
+              ${r.profitabilityAnalysis.freecashflow ? `<p class="dr-text" style="color:var(--muted)">${r.profitabilityAnalysis.freecashflow}</p>` : ''}
             </div>` : ''}
         </div>
 
-        <!-- Earnings + Balance Sheet -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:18px">
+        <div class="dr-grid" style="margin-bottom:20px">
           ${r.earningsAnalysis ? `
-            <div style="background:#2c2c2e;border:1px solid #3a3a3c;border-radius:8px;padding:14px">
-              <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:#58a6ff;font-weight:700;margin-bottom:8px">Earnings Analysis</div>
-              ${r.earningsAnalysis.fiveQuarterScorecard ? `<p style="font-size:0.84rem;line-height:1.55;color:#c9d1d9;margin-bottom:8px">${r.earningsAnalysis.fiveQuarterScorecard}</p>` : ''}
-              ${r.earningsAnalysis.earningsQuality ? `<p style="font-size:0.82rem;line-height:1.5;color:#8b949e">${r.earningsAnalysis.earningsQuality}</p>` : ''}
+            <div class="dr-box">
+              <div class="dr-label" style="color:var(--blue)">Earnings Analysis</div>
+              ${r.earningsAnalysis.fiveQuarterScorecard ? `<p class="dr-text" style="margin-bottom:8px">${r.earningsAnalysis.fiveQuarterScorecard}</p>` : ''}
+              ${r.earningsAnalysis.earningsQuality ? `<p class="dr-text" style="color:var(--muted)">${r.earningsAnalysis.earningsQuality}</p>` : ''}
             </div>` : ''}
           ${r.balanceSheetAnalysis ? `
-            <div style="background:#2c2c2e;border:1px solid #3a3a3c;border-radius:8px;padding:14px">
-              <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:#58a6ff;font-weight:700;margin-bottom:8px">Balance Sheet</div>
-              <p style="font-size:0.84rem;line-height:1.55;color:#c9d1d9">${r.balanceSheetAnalysis}</p>
+            <div class="dr-box">
+              <div class="dr-label" style="color:var(--blue)">Balance Sheet</div>
+              <p class="dr-text">${r.balanceSheetAnalysis}</p>
             </div>` : ''}
         </div>
 
-        <!-- Competitive Position + Valuation -->
-        ${section('Competitive Position', r.competitivePosition, '#58a6ff')}
-        ${section('Valuation', r.valuation, '#58a6ff')}
+        ${section('Competitive Position', r.competitivePosition)}
+        ${section('Valuation', r.valuation)}
 
-        <!-- Risks + Catalysts -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:18px">
+        <div class="dr-grid" style="margin-bottom:20px">
           ${r.keyRisks?.length ? `
-            <div style="background:#2c2c2e;border:1px solid #3a3a3c;border-radius:8px;padding:14px">
-              <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:#f0c000;font-weight:700;margin-bottom:8px">Key Risks</div>
+            <div class="dr-box">
+              <div class="dr-label" style="color:var(--yellow)">Key Risks</div>
               ${listItems(r.keyRisks)}
             </div>` : ''}
           ${r.catalysts?.length ? `
-            <div style="background:#2c2c2e;border:1px solid #3a3a3c;border-radius:8px;padding:14px">
-              <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:#3fb950;font-weight:700;margin-bottom:8px">Key Catalysts</div>
+            <div class="dr-box">
+              <div class="dr-label" style="color:var(--green)">Key Catalysts</div>
               ${listItems(r.catalysts)}
             </div>` : ''}
         </div>
 
-        <!-- Price Target Rationale + Conclusion -->
-        ${r.priceTargetRationale ? `<div style="background:#1c2333;border-left:3px solid ${recColor};padding:12px 16px;border-radius:0 6px 6px 0;margin-bottom:14px">
-          <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:${recColor};font-weight:700;margin-bottom:4px">Price Target Rationale</div>
-          <p style="font-size:0.84rem;line-height:1.5;color:#c9d1d9">${r.priceTargetRationale}</p>
-        </div>` : ''}
+        ${r.priceTargetRationale ? `
+          <div style="background:${recBg};border-left:3px solid ${recColor};border-radius:0 8px 8px 0;padding:12px 16px;margin-bottom:16px">
+            <div class="dr-label" style="color:${recColor};margin-bottom:4px">Price Target Rationale</div>
+            <p class="dr-text">${r.priceTargetRationale}</p>
+          </div>` : ''}
 
-        ${r.conclusion ? `<div style="background:#21262d;border:1px solid #3a3a3c;border-radius:8px;padding:14px">
-          <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:#8b949e;font-weight:700;margin-bottom:6px">Conclusion</div>
-          <p style="font-size:0.88rem;line-height:1.6;color:#e6edf3;font-weight:500">${r.conclusion}</p>
-        </div>` : ''}
+        ${r.conclusion ? `
+          <div style="background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:16px">
+            <div class="dr-label" style="color:var(--muted);margin-bottom:6px">Conclusion</div>
+            <p style="font-size:0.9rem;line-height:1.65;color:var(--text);font-weight:500">${r.conclusion}</p>
+          </div>` : ''}
       </div>
     </div>
   `;
+}
+
+// ── Main detail render ────────────────────────────────────────────────────
+let activeTab = 'overview';
+function switchTab(name) {
+  activeTab = name;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab===name));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id==='tab-'+name));
 }
 
 function renderDetail(d) {
-  const pos=d.price.change>=0;
-  const rsiPct=Math.min(Math.max(d.rsi,0),100);
-  const updatedAt=d.generatedAt?new Date(d.generatedAt).toLocaleString('en-US',{
+  const pos = d.price.change >= 0;
+  const updatedAt = d.generatedAt ? new Date(d.generatedAt).toLocaleString('en-US',{
     timeZone:'America/Los_Angeles',month:'short',day:'numeric',year:'numeric',
-    hour:'numeric',minute:'2-digit',hour12:true})+' PST':'';
-  const dotClass=s=>s.includes('bearish')||s.includes('death')||s.includes('overbought')?'bear'
-    :s.includes('oversold')?'warn':'';
+    hour:'numeric',minute:'2-digit',hour12:true})+' PT' : '';
 
-  const det=document.getElementById('detail');
-  det.className='visible';
-  det.innerHTML=`
+  document.getElementById('welcome').style.display = 'none';
+  const det = document.getElementById('detail');
+  det.style.display = 'block';
+
+  // Determine recommendation from narrative
+  const rec = d.narrative?.recommendation;
+
+  det.innerHTML = `
     <div class="d-header">
-      <div class="ticker">${d.symbol}</div>
-      <span class="badge ${d.overall}">${d.overall}</span>
-    </div>
-    <div class="price-big">$${fmt(d.price.current)}</div>
-    <div class="price-chg ${pos?'pos':'neg'}">${pos?'▲':'▼'} ${fmt(Math.abs(d.price.change))} (${fmt(Math.abs(d.price.changePct))}%) today</div>
-    <div class="grid">
-      <div class="card">
-        <div class="card-title">Price Levels</div>
-        <div class="metric"><span class="ml">Open</span><span class="mv">$${fmt(d.price.open)}</span></div>
-        <div class="metric"><span class="ml">High</span><span class="mv">$${fmt(d.price.high)}</span></div>
-        <div class="metric"><span class="ml">Low</span><span class="mv">$${fmt(d.price.low)}</span></div>
-        <div class="metric"><span class="ml">52W High</span><span class="mv">$${fmt(d.yearRange.high52)}</span></div>
-        <div class="metric"><span class="ml">52W Low</span><span class="mv">$${fmt(d.yearRange.low52)}</span></div>
-        <div class="metric"><span class="ml">From 52W High</span><span class="mv neg">${fmt(d.yearRange.pctFromHigh)}%</span></div>
-      </div>
-      <div class="card">
-        <div class="card-title">Moving Averages</div>
-        <div class="metric"><span class="ml">SMA 20</span><span class="mv">$${fmt(d.movingAverages.sma20)}</span></div>
-        <div class="metric"><span class="ml">SMA 50</span><span class="mv">$${fmt(d.movingAverages.sma50)}</span></div>
-        <div class="metric"><span class="ml">SMA 200</span><span class="mv">${d.movingAverages.sma200!=null?'$'+fmt(d.movingAverages.sma200):'N/A'}</span></div>
-        <hr class="dim"/>
-        <div class="card-title">Bollinger Bands</div>
-        <div class="metric"><span class="ml">Upper</span><span class="mv">$${fmt(d.bollingerBands.upper)}</span></div>
-        <div class="metric"><span class="ml">Middle</span><span class="mv">$${fmt(d.bollingerBands.middle)}</span></div>
-        <div class="metric"><span class="ml">Lower</span><span class="mv">$${fmt(d.bollingerBands.lower)}</span></div>
-      </div>
-      <div class="card">
-        <div class="card-title">RSI (14)</div>
-        <div style="font-size:1.8rem;font-weight:700;margin-bottom:6px">${fmt(d.rsi,1)}
-          <span style="font-size:0.75rem;font-weight:400;color:${d.rsi>70?'#f0c000':d.rsi<30?'#58a6ff':'#8b949e'}">${d.rsi>70?'Overbought':d.rsi<30?'Oversold':'Neutral'}</span>
+      <div class="d-title-row">
+        <div>
+          <div class="d-sym">${d.symbol}</div>
+          ${d.fullDeepResearch?.companyName ? `<div class="d-company">${d.fullDeepResearch.companyName}</div>` : ''}
         </div>
-        <div class="rsi-bar"><div class="rsi-fill"></div><div class="rsi-marker" style="left:${rsiPct}%"></div></div>
-        <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:#484f58;margin-top:4px"><span>0</span><span>30</span><span>70</span><span>100</span></div>
-        <hr class="dim"/>
-        <div class="card-title">MACD</div>
-        <div class="metric"><span class="ml">MACD</span><span class="mv ${d.macd.macdLine>=0?'pos':'neg'}">${fmt(d.macd.macdLine,4)}</span></div>
-        <div class="metric"><span class="ml">Signal</span><span class="mv">${fmt(d.macd.signal,4)}</span></div>
-        <div class="metric"><span class="ml">Histogram</span><span class="mv ${d.macd.histogram>=0?'pos':'neg'}">${fmt(d.macd.histogram,4)}</span></div>
+        <div style="text-align:right">
+          ${updatedAt ? `<div style="font-size:0.72rem;color:var(--faint);margin-bottom:4px">Data as of ${updatedAt}</div>` : ''}
+          ${d.fullDeepResearch?.generatedAt ? `<div style="font-size:0.72rem;color:var(--faint)">Deep research: ${fmtDate(d.fullDeepResearch.generatedAt)}</div>` : ''}
+        </div>
       </div>
-      <div class="card">
-        <div class="card-title">Volume</div>
-        <div class="metric"><span class="ml">Today</span><span class="mv">${fmtBig(d.volume.today)}</span></div>
-        <div class="metric"><span class="ml">20D Avg</span><span class="mv">${fmtBig(d.volume.avg20)}</span></div>
-        <div class="metric"><span class="ml">Ratio</span><span class="mv ${d.volume.ratio>=1?'pos':'neg'}">${fmt(d.volume.ratio,2)}x</span></div>
+      <div class="d-price-row">
+        <div class="d-price">$${fmt(d.price.current)}</div>
+        <div class="d-change ${pos?'pos':'neg'}">${pos?'▲':'▼'} ${fmt(Math.abs(d.price.change))} (${fmt(Math.abs(d.price.changePct))}%)</div>
+      </div>
+      <div class="badge-row">
+        <span class="badge ${d.overall}">${d.overall}</span>
+        ${rec ? `<span class="badge ${rec}">Claude: ${rec}</span>` : ''}
+        ${d.fullDeepResearch?.report?.recommendation ? `<span class="badge ${d.fullDeepResearch.report.recommendation}" style="opacity:.8">Deep: ${d.fullDeepResearch.report.recommendation}</span>` : ''}
+        ${d.fullDeepResearch?.report?.priceTarget ? `<span style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:0.78rem;color:var(--muted)">PT <strong style="color:var(--text)">$${d.fullDeepResearch.report.priceTarget}</strong></span>` : ''}
       </div>
     </div>
-    ${renderNarrative(d.narrative)}
-    ${renderFundamentals(d.fundamentals)}
-    ${renderDeepResearch(d.deepResearch)}
-    ${renderFullDeepResearch(d.fullDeepResearch)}
-    <div class="signals">
-      <div class="card-title" style="margin-bottom:9px">Signals</div>
-      ${(d.signals||[]).map(s=>`<div class="sig"><span class="dot ${dotClass(s)}"></span><span>${s}</span></div>`).join('')}
+
+    <div class="tabs">
+      <button class="tab active" data-tab="overview"  onclick="switchTab('overview')">Overview</button>
+      <button class="tab"        data-tab="technical" onclick="switchTab('technical')">Technical</button>
+      <button class="tab"        data-tab="fundamentals" onclick="switchTab('fundamentals')">Fundamentals</button>
+      <button class="tab"        data-tab="research"  onclick="switchTab('research')">Deep Research</button>
     </div>
-    <footer>Updated: ${updatedAt} &nbsp;·&nbsp; Yahoo Finance &nbsp;·&nbsp; Not financial advice</footer>
+
+    <div id="tab-overview"      class="tab-panel active">${renderOverview(d)}</div>
+    <div id="tab-technical"     class="tab-panel">${renderTechnical(d)}</div>
+    <div id="tab-fundamentals"  class="tab-panel">${renderFundamentals(d.fundamentals, d.deepResearch)}</div>
+    <div id="tab-research"      class="tab-panel">${renderDeepResearch(d.fullDeepResearch)}</div>
+
+    <footer>Updated ${updatedAt} &nbsp;·&nbsp; Data: Yahoo Finance + SEC EDGAR &nbsp;·&nbsp; AI: Claude Sonnet 4.6 &nbsp;·&nbsp; Not financial advice</footer>
   `;
 }
 
+// ── Sidebar chips ─────────────────────────────────────────────────────────
 function setActive(sym) {
   activeSymbol = sym;
-  document.querySelectorAll('.stock-btn').forEach(b=>b.classList.toggle('active', b.dataset.sym===sym));
+  document.querySelectorAll('.stock-btn').forEach(b => b.classList.toggle('active', b.dataset.sym===sym));
 }
-
 function addSavedChip(d) {
   const sym = d.symbol;
-  if (document.querySelector(`.stock-btn[data-sym="${sym}"]`)) return;
+  if (document.querySelector(`.stock-btn[data-sym="${sym}"]`)) {
+    updateChip(d); return;
+  }
   const pos = d.price.change >= 0;
+  const dateStr = d.generatedAt ? fmtDateShort(d.generatedAt) : '';
   const btn = document.createElement('button');
   btn.className = 'stock-btn';
   btn.dataset.sym = sym;
@@ -722,36 +816,51 @@ function addSavedChip(d) {
     <div class="sym">${sym}</div>
     <div class="s-price">$${fmt(d.price.current)}</div>
     <div class="s-chg ${pos?'pos':'neg'}">${pos?'▲':'▼'} ${fmt(Math.abs(d.price.changePct))}%</div>
+    ${dateStr ? `<div class="s-date">${dateStr}</div>` : ''}
   `;
   btn.onclick = () => { setActive(sym); renderDetail(cache[sym]); };
-  document.getElementById('stockList').appendChild(btn);
+
+  // Insert in alphabetical order
+  const list = document.getElementById('stockList');
+  const buttons = [...list.querySelectorAll('.stock-btn')];
+  const insertBefore = buttons.find(b => b.dataset.sym > sym);
+  if (insertBefore) list.insertBefore(btn, insertBefore);
+  else list.appendChild(btn);
+}
+function updateChip(d) {
+  const btn = document.querySelector(`.stock-btn[data-sym="${d.symbol}"]`);
+  if (!btn) return;
+  const pos = d.price.change >= 0;
+  const dateStr = d.generatedAt ? fmtDateShort(d.generatedAt) : '';
+  btn.innerHTML = `
+    <div class="sym">${d.symbol}</div>
+    <div class="s-price">$${fmt(d.price.current)}</div>
+    <div class="s-chg ${pos?'pos':'neg'}">${pos?'▲':'▼'} ${fmt(Math.abs(d.price.changePct))}%</div>
+    ${dateStr ? `<div class="s-date">${dateStr}</div>` : ''}
+  `;
 }
 
-// ── Search ─────────────────────────────────────────────────────────────────
+// ── Search ────────────────────────────────────────────────────────────────
 async function search() {
   const input = document.getElementById('symInput');
-  const btn = document.getElementById('searchBtn');
-  const sym = input.value.trim().toUpperCase();
+  const btn   = document.getElementById('searchBtn');
+  const sym   = input.value.trim().toUpperCase();
   if (!sym) return;
+  if (cache[sym]) { setActive(sym); renderDetail(cache[sym]); input.value=''; return; }
 
-  // Already cached
-  if (cache[sym]) { setActive(sym); renderDetail(cache[sym]); return; }
-
-  btn.disabled = true;
-  btn.textContent = 'Loading…';
-  document.getElementById('detail').className = 'visible';
-  document.getElementById('detail').innerHTML = `<div class="spinner">Analyzing ${sym}</div>`;
+  btn.disabled = true; btn.textContent = 'Loading…';
+  document.getElementById('welcome').style.display = 'none';
+  document.getElementById('detail').style.display = 'block';
+  document.getElementById('detail').innerHTML = `<div class="spinner-wrap"><div class="spinner"></div><span>Analyzing ${sym}…</span></div>`;
 
   try {
-    // Try Firestore first (pre-computed), else fetch live
     let d = await loadFromFirestore(sym);
     if (!d) {
       const [result, fundamentals, deepResearch] = await Promise.all([fetchFromYahoo(sym), fetchFundamentalsLive(sym), fetchDeepResearchLive(sym)]);
       d = { ...computeAnalysis(sym, result), fundamentals, deepResearch };
     }
-    // Always try to load full deep research from Firestore (SEC EDGAR report)
-    const fullDeepResearch = await loadDeepResearchFromFirestore(sym);
-    if (fullDeepResearch) d.fullDeepResearch = fullDeepResearch;
+    const fdr = await loadDeepResearchFromFirestore(sym);
+    if (fdr) d.fullDeepResearch = fdr;
     cache[sym] = d;
     addSavedChip(d);
     setActive(sym);
@@ -760,31 +869,28 @@ async function search() {
   } catch(e) {
     document.getElementById('detail').innerHTML = `<div class="err-msg">Could not load <strong>${sym}</strong>: ${e.message}</div>`;
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Analyze';
+    btn.disabled = false; btn.textContent = 'Analyze';
   }
 }
 
-// Enter key
 document.getElementById('symInput').addEventListener('keydown', e => { if(e.key==='Enter') search(); });
-// Auto-uppercase as you type
-document.getElementById('symInput').addEventListener('input', e => { const p=e.target.selectionStart; e.target.value=e.target.value.toUpperCase(); e.target.setSelectionRange(p,p); });
+document.getElementById('symInput').addEventListener('input',   e => { const p=e.target.selectionStart; e.target.value=e.target.value.toUpperCase(); e.target.setSelectionRange(p,p); });
 
-// ── Boot: load saved symbols from Firestore ────────────────────────────────
+// ── Boot ──────────────────────────────────────────────────────────────────
 (async () => {
   await Promise.all(SAVED.map(async sym => {
     try {
-      const d = await loadFromFirestore(sym);
+      const [d, fdr] = await Promise.all([loadFromFirestore(sym), loadDeepResearchFromFirestore(sym)]);
       if (d) {
-        const fdr = await loadDeepResearchFromFirestore(sym);
         if (fdr) d.fullDeepResearch = fdr;
         cache[sym] = d;
         addSavedChip(d);
       }
     } catch(_) {}
   }));
-  // Show first saved
-  if (SAVED[0] && cache[SAVED[0]]) { setActive(SAVED[0]); renderDetail(cache[SAVED[0]]); }
+  // Show first saved that loaded
+  const first = SAVED.find(s => cache[s]);
+  if (first) { setActive(first); renderDetail(cache[first]); }
 })();
 </script>
 </body>

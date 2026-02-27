@@ -337,7 +337,7 @@ async function generateNarrative(symbol: string, analysis: any, fundamentals: an
 - Gross Margin: ${f.grossMargin != null ? (f.grossMargin * 100).toFixed(1) + '%' : 'N/A'} | Profit Margin: ${f.profitMargin != null ? (f.profitMargin * 100).toFixed(1) + '%' : 'N/A'}
 - ROE: ${f.returnOnEquity != null ? (f.returnOnEquity * 100).toFixed(1) + '%' : 'N/A'} | Debt/Equity: ${f.debtToEquity != null ? Number(f.debtToEquity).toFixed(2) : 'N/A'}
 - Free Cash Flow: ${f.freeCashflow ? '$' + (f.freeCashflow / 1e9).toFixed(2) + 'B' : 'N/A'}
-- Beta: ${f.beta?.toFixed(2) || 'N/A'}
+- Beta: ${f.beta != null ? Number(f.beta).toFixed(2) : 'N/A'}
 
 ## Analyst Sentiment
 - Consensus: ${ar.consensus || 'N/A'} (${ar.numberOfAnalysts || 0} analysts)
@@ -386,10 +386,18 @@ Return ONLY valid JSON, no markdown, no explanation:
       if (!res.ok) { console.error(`  Claude API error: ${res.status}`); return null; }
 
       const json = await res.json() as any;
+      const usage = json.usage || {};
+      const claudeUsage = {
+        inputTokens: usage.input_tokens || 0,
+        outputTokens: usage.output_tokens || 0,
+        costUsd: (usage.input_tokens || 0) * 0.000003 + (usage.output_tokens || 0) * 0.000015,
+        model: 'claude-sonnet-4-6',
+        generatedAt: new Date().toISOString(),
+      };
       const raw = (json.content?.[0]?.text || '').trim();
-      try { return JSON.parse(raw); } catch {
+      try { return { ...(JSON.parse(raw)), _claudeUsage: claudeUsage }; } catch {
         const stripped = raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
-        try { return JSON.parse(stripped); } catch(e) {
+        try { return { ...(JSON.parse(stripped)), _claudeUsage: claudeUsage }; } catch(e) {
           console.error(`  Failed to parse Claude response:`, stripped.slice(0, 200));
           return null;
         }
@@ -406,7 +414,9 @@ for (const symbol of SYMBOLS) {
   console.log(`Fetching ${symbol}...`);
   const [analysis, fundamentals, deepResearch] = await Promise.all([fetchAnalysis(symbol), fetchFundamentals(symbol), fetchDeepResearch(symbol)]);
   console.log(`  Generating Claude narrative...`);
-  const narrative = await generateNarrative(symbol, analysis, fundamentals, deepResearch);
-  if (narrative) console.log(`  Claude recommendation: ${narrative.recommendation}`);
-  await pushToFirestore(symbol, { ...analysis, fundamentals, deepResearch, narrative });
+  const narrativeRaw = await generateNarrative(symbol, analysis, fundamentals, deepResearch);
+  const claudeUsage = narrativeRaw?._claudeUsage || null;
+  const narrative = narrativeRaw ? (({ _claudeUsage, ...rest }) => rest)(narrativeRaw) : null;
+  if (narrative) console.log(`  Claude recommendation: ${narrative.recommendation}  [${claudeUsage?.inputTokens}in / ${claudeUsage?.outputTokens}out · $${claudeUsage?.costUsd?.toFixed(4)}]`);
+  await pushToFirestore(symbol, { ...analysis, fundamentals, deepResearch, narrative, claudeUsage });
 }
