@@ -1,5 +1,5 @@
 const PROJECT = 'stock-research-9eee9';
-const SYMBOLS = (Bun.argv[2] ? [Bun.argv[2].toUpperCase()] : ['NVDA', 'CRWD', 'AAPL', 'TSLA', 'SNOW', 'NTAP', 'DELL']);
+const SYMBOLS = (Bun.argv[2] ? [Bun.argv[2].toUpperCase()] : ['NVDA', 'CRWD', 'AAPL', 'TSLA', 'SNOW', 'NTAP', 'DELL', 'ADSK']);
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || (await Bun.file('C:/Users/user/stock-research/.env').text().then(t => t.match(/ANTHROPIC_API_KEY=(.+)/)?.[1]?.trim() ?? ''));
 
 // Get access token from service account

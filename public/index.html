@@ -100,7 +100,7 @@
 
 <script>
 const PROJECT = 'stock-research-9eee9';
-const SAVED = ['NVDA', 'CRWD', 'AAPL', 'TSLA', 'SNOW', 'NTAP', 'DELL'];
+const SAVED = ['NVDA', 'CRWD', 'AAPL', 'TSLA', 'SNOW', 'NTAP', 'DELL', 'ADSK'];
 const cache = {};
 let activeSymbol = null;
 
@@ -129,6 +129,19 @@ async function loadFromFirestore(sym) {
   const d={};
   for(const [k,v] of Object.entries(doc.fields)) d[k]=fromFS(v);
   return d;
+}
+
+async function loadDeepResearchFromFirestore(sym) {
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/deepResearch/${sym}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const doc = await res.json();
+    if (!doc.fields) return null;
+    const d={};
+    for(const [k,v] of Object.entries(doc.fields)) d[k]=fromFS(v);
+    return d;
+  } catch(_) { return null; }
 }
 
 // ── Yahoo Finance via CORS proxy ───────────────────────────────────────────
@@ -502,6 +515,126 @@ function renderFundamentals(f) {
   `;
 }
 
+function renderFullDeepResearch(dr) {
+  if (!dr || !dr.report) return '';
+  const r = dr.report;
+  const recColor = r.recommendation === 'BUY' ? '#3fb950' : r.recommendation === 'SELL' ? '#f85149' : '#f0c000';
+  const recBg    = r.recommendation === 'BUY' ? '#1a4731' : r.recommendation === 'SELL' ? '#4a1320' : '#3a2f0a';
+
+  const listItems = (arr) => (arr || []).map(i => `
+    <div style="display:flex;gap:8px;padding:4px 0;font-size:0.84rem">
+      <span style="color:#58a6ff;flex-shrink:0">›</span>
+      <span style="color:#c9d1d9">${i}</span>
+    </div>`).join('');
+
+  const section = (title, content, color='#8b949e') => content ? `
+    <div style="margin-bottom:16px">
+      <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:${color};font-weight:700;margin-bottom:6px">${title}</div>
+      <p style="font-size:0.85rem;line-height:1.6;color:#c9d1d9">${content}</p>
+    </div>` : '';
+
+  const genDate = dr.generatedAt ? new Date(dr.generatedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+
+  return `
+    <div style="margin-bottom:16px;border:1px solid #3a3a3c;border-radius:10px;overflow:hidden">
+      <!-- Header -->
+      <div style="background:linear-gradient(135deg,#161b22 0%,#1c2333 100%);padding:18px 20px;border-bottom:1px solid #3a3a3c">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+          <div>
+            <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:#58a6ff;font-weight:700;margin-bottom:4px">Claude Deep Research · SEC EDGAR + 10-K Analysis</div>
+            <div style="font-size:1.05rem;font-weight:700;color:#e6edf3">${r.reportTitle || (dr.symbol + ' Deep Research Report')}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            ${r.priceTarget ? `<div style="font-size:0.82rem;color:#8b949e">Price Target: <span style="color:#e6edf3;font-weight:700">$${r.priceTarget}</span></div>` : ''}
+            ${r.recommendation ? `<span style="padding:6px 18px;border-radius:20px;font-weight:700;font-size:0.9rem;background:${recBg};color:${recColor};border:1px solid ${recColor}">${r.recommendation}</span>` : ''}
+          </div>
+        </div>
+        ${r.executiveSummary ? `<p style="font-size:0.88rem;line-height:1.6;color:#8b949e">${r.executiveSummary}</p>` : ''}
+        ${genDate ? `<div style="font-size:0.7rem;color:#484f58;margin-top:8px">Generated ${genDate} · Not financial advice</div>` : ''}
+      </div>
+
+      <!-- Body -->
+      <div style="padding:18px 20px;background:#1c1c1e">
+
+        <!-- Investment Thesis + Bear Case -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:18px">
+          ${r.investmentThesis ? `
+            <div style="background:#1a2a1a;border:1px solid #2d4a2d;border-radius:8px;padding:14px">
+              <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:#3fb950;font-weight:700;margin-bottom:8px">Investment Thesis (Bull Case)</div>
+              <p style="font-size:0.84rem;line-height:1.6;color:#c9d1d9">${r.investmentThesis}</p>
+            </div>` : ''}
+          ${r.bearCase ? `
+            <div style="background:#2a1a1a;border:1px solid #4a2d2d;border-radius:8px;padding:14px">
+              <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:#f85149;font-weight:700;margin-bottom:8px">Bear Case</div>
+              <p style="font-size:0.84rem;line-height:1.6;color:#c9d1d9">${r.bearCase}</p>
+            </div>` : ''}
+        </div>
+
+        <!-- Revenue + Profitability -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:18px">
+          ${r.revenueAnalysis ? `
+            <div style="background:#2c2c2e;border:1px solid #3a3a3c;border-radius:8px;padding:14px">
+              <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:#58a6ff;font-weight:700;margin-bottom:8px">Revenue Analysis</div>
+              ${r.revenueAnalysis.fiveYearTrend ? `<p style="font-size:0.84rem;line-height:1.55;color:#c9d1d9;margin-bottom:8px">${r.revenueAnalysis.fiveYearTrend}</p>` : ''}
+              ${r.revenueAnalysis.recentQuarters ? `<p style="font-size:0.82rem;line-height:1.5;color:#8b949e">${r.revenueAnalysis.recentQuarters}</p>` : ''}
+              ${r.revenueAnalysis.growthDrivers?.length ? `<div style="margin-top:8px">${listItems(r.revenueAnalysis.growthDrivers)}</div>` : ''}
+            </div>` : ''}
+          ${r.profitabilityAnalysis ? `
+            <div style="background:#2c2c2e;border:1px solid #3a3a3c;border-radius:8px;padding:14px">
+              <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:#58a6ff;font-weight:700;margin-bottom:8px">Profitability & FCF</div>
+              ${r.profitabilityAnalysis.marginTrends ? `<p style="font-size:0.84rem;line-height:1.55;color:#c9d1d9;margin-bottom:8px">${r.profitabilityAnalysis.marginTrends}</p>` : ''}
+              ${r.profitabilityAnalysis.freecashflow ? `<p style="font-size:0.82rem;line-height:1.5;color:#8b949e">${r.profitabilityAnalysis.freecashflow}</p>` : ''}
+            </div>` : ''}
+        </div>
+
+        <!-- Earnings + Balance Sheet -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:18px">
+          ${r.earningsAnalysis ? `
+            <div style="background:#2c2c2e;border:1px solid #3a3a3c;border-radius:8px;padding:14px">
+              <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:#58a6ff;font-weight:700;margin-bottom:8px">Earnings Analysis</div>
+              ${r.earningsAnalysis.fiveQuarterScorecard ? `<p style="font-size:0.84rem;line-height:1.55;color:#c9d1d9;margin-bottom:8px">${r.earningsAnalysis.fiveQuarterScorecard}</p>` : ''}
+              ${r.earningsAnalysis.earningsQuality ? `<p style="font-size:0.82rem;line-height:1.5;color:#8b949e">${r.earningsAnalysis.earningsQuality}</p>` : ''}
+            </div>` : ''}
+          ${r.balanceSheetAnalysis ? `
+            <div style="background:#2c2c2e;border:1px solid #3a3a3c;border-radius:8px;padding:14px">
+              <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:#58a6ff;font-weight:700;margin-bottom:8px">Balance Sheet</div>
+              <p style="font-size:0.84rem;line-height:1.55;color:#c9d1d9">${r.balanceSheetAnalysis}</p>
+            </div>` : ''}
+        </div>
+
+        <!-- Competitive Position + Valuation -->
+        ${section('Competitive Position', r.competitivePosition, '#58a6ff')}
+        ${section('Valuation', r.valuation, '#58a6ff')}
+
+        <!-- Risks + Catalysts -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:18px">
+          ${r.keyRisks?.length ? `
+            <div style="background:#2c2c2e;border:1px solid #3a3a3c;border-radius:8px;padding:14px">
+              <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:#f0c000;font-weight:700;margin-bottom:8px">Key Risks</div>
+              ${listItems(r.keyRisks)}
+            </div>` : ''}
+          ${r.catalysts?.length ? `
+            <div style="background:#2c2c2e;border:1px solid #3a3a3c;border-radius:8px;padding:14px">
+              <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:#3fb950;font-weight:700;margin-bottom:8px">Key Catalysts</div>
+              ${listItems(r.catalysts)}
+            </div>` : ''}
+        </div>
+
+        <!-- Price Target Rationale + Conclusion -->
+        ${r.priceTargetRationale ? `<div style="background:#1c2333;border-left:3px solid ${recColor};padding:12px 16px;border-radius:0 6px 6px 0;margin-bottom:14px">
+          <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:${recColor};font-weight:700;margin-bottom:4px">Price Target Rationale</div>
+          <p style="font-size:0.84rem;line-height:1.5;color:#c9d1d9">${r.priceTargetRationale}</p>
+        </div>` : ''}
+
+        ${r.conclusion ? `<div style="background:#21262d;border:1px solid #3a3a3c;border-radius:8px;padding:14px">
+          <div style="font-size:0.69rem;text-transform:uppercase;letter-spacing:.08em;color:#8b949e;font-weight:700;margin-bottom:6px">Conclusion</div>
+          <p style="font-size:0.88rem;line-height:1.6;color:#e6edf3;font-weight:500">${r.conclusion}</p>
+        </div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
 function renderDetail(d) {
   const pos=d.price.change>=0;
   const rsiPct=Math.min(Math.max(d.rsi,0),100);
@@ -564,6 +697,7 @@ function renderDetail(d) {
     ${renderNarrative(d.narrative)}
     ${renderFundamentals(d.fundamentals)}
     ${renderDeepResearch(d.deepResearch)}
+    ${renderFullDeepResearch(d.fullDeepResearch)}
     <div class="signals">
       <div class="card-title" style="margin-bottom:9px">Signals</div>
       ${(d.signals||[]).map(s=>`<div class="sig"><span class="dot ${dotClass(s)}"></span><span>${s}</span></div>`).join('')}
@@ -615,6 +749,9 @@ async function search() {
       const [result, fundamentals, deepResearch] = await Promise.all([fetchFromYahoo(sym), fetchFundamentalsLive(sym), fetchDeepResearchLive(sym)]);
       d = { ...computeAnalysis(sym, result), fundamentals, deepResearch };
     }
+    // Always try to load full deep research from Firestore (SEC EDGAR report)
+    const fullDeepResearch = await loadDeepResearchFromFirestore(sym);
+    if (fullDeepResearch) d.fullDeepResearch = fullDeepResearch;
     cache[sym] = d;
     addSavedChip(d);
     setActive(sym);
@@ -638,7 +775,12 @@ document.getElementById('symInput').addEventListener('input', e => { const p=e.t
   await Promise.all(SAVED.map(async sym => {
     try {
       const d = await loadFromFirestore(sym);
-      if (d) { cache[sym] = d; addSavedChip(d); }
+      if (d) {
+        const fdr = await loadDeepResearchFromFirestore(sym);
+        if (fdr) d.fullDeepResearch = fdr;
+        cache[sym] = d;
+        addSavedChip(d);
+      }
     } catch(_) {}
   }));
   // Show first saved
