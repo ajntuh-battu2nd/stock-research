@@ -71,6 +71,7 @@
       background: var(--surface); border-right: 1px solid var(--border);
       padding: 16px 10px; overflow-y: auto;
       position: sticky; top: 56px; height: calc(100vh - 56px);
+      display: flex; flex-direction: column;
     }
     .sidebar-label {
       font-size: 0.65rem; text-transform: uppercase; letter-spacing: .1em;
@@ -224,6 +225,7 @@
   <div class="sidebar">
     <div class="sidebar-label">Watchlist</div>
     <div id="stockList"></div>
+    <div id="costSummary" style="display:none;margin-top:auto;padding-top:12px;border-top:1px solid var(--border);margin-top:16px"></div>
   </div>
 
   <!-- Main -->
@@ -863,6 +865,7 @@ async function search() {
     if (fdr) d.fullDeepResearch = fdr;
     cache[sym] = d;
     addSavedChip(d);
+    updateCostSummary();
     setActive(sym);
     renderDetail(d);
     input.value = '';
@@ -876,6 +879,28 @@ async function search() {
 document.getElementById('symInput').addEventListener('keydown', e => { if(e.key==='Enter') search(); });
 document.getElementById('symInput').addEventListener('input',   e => { const p=e.target.selectionStart; e.target.value=e.target.value.toUpperCase(); e.target.setSelectionRange(p,p); });
 
+// ── Cost summary ─────────────────────────────────────────────────────────
+function updateCostSummary() {
+  const el = document.getElementById('costSummary');
+  let narrativeCost = 0, deepCost = 0, narrativeCount = 0, deepCount = 0;
+  for (const d of Object.values(cache)) {
+    if (d.claudeUsage?.costUsd) { narrativeCost += d.claudeUsage.costUsd; narrativeCount++; }
+    if (d.fullDeepResearch?.claudeUsage?.costUsd) { deepCost += d.fullDeepResearch.claudeUsage.costUsd; deepCount++; }
+  }
+  const total = narrativeCost + deepCost;
+  if (total === 0) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div style="font-size:0.64rem;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);margin-bottom:8px;padding:0 4px">AI Research Cost</div>
+    ${narrativeCount ? `<div style="display:flex;justify-content:space-between;padding:3px 4px;font-size:0.75rem"><span style="color:var(--muted)">Narrative ×${narrativeCount}</span><span style="color:var(--text)">$${narrativeCost.toFixed(3)}</span></div>` : ''}
+    ${deepCount ? `<div style="display:flex;justify-content:space-between;padding:3px 4px;font-size:0.75rem"><span style="color:var(--muted)">Deep Research ×${deepCount}</span><span style="color:var(--text)">$${deepCost.toFixed(3)}</span></div>` : ''}
+    <div style="display:flex;justify-content:space-between;padding:6px 4px 2px;font-size:0.82rem;border-top:1px solid var(--border);margin-top:4px">
+      <span style="font-weight:600;color:var(--muted)">Total</span>
+      <span style="font-weight:700;color:var(--blue)">$${total.toFixed(3)}</span>
+    </div>
+  `;
+}
+
 // ── Boot ──────────────────────────────────────────────────────────────────
 (async () => {
   await Promise.all(SAVED.map(async sym => {
@@ -885,6 +910,7 @@ document.getElementById('symInput').addEventListener('input',   e => { const p=e
         if (fdr) d.fullDeepResearch = fdr;
         cache[sym] = d;
         addSavedChip(d);
+        updateCostSummary();
       }
     } catch(_) {}
   }));
