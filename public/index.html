@@ -842,6 +842,36 @@ function updateChip(d) {
   `;
 }
 
+// ── Live Claude narrative via Worker ──────────────────────────────────────
+async function fetchLiveNarrative(sym, technical, fundamentals, deepResearch) {
+  try {
+    const ar = deepResearch?.analystRatings || {};
+    const res = await fetch(`${WORKER}?symbol=${sym}&type=narrative`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        symbol: sym,
+        technical,
+        fundamentals,
+        analystRatings: ar,
+        earnings: deepResearch?.earnings || {},
+        ownership: deepResearch?.ownership || {},
+      }),
+    });
+    if (!res.ok) return null;
+    return await res.json(); // { narrative, claudeUsage }
+  } catch(_) { return null; }
+}
+
+// ── Inline tab updater (used during progressive load) ─────────────────────
+function setTabContent(tabId, html) {
+  const el = document.getElementById('tab-' + tabId);
+  if (el) el.innerHTML = html;
+}
+function setTabLoading(tabId, msg) {
+  setTabContent(tabId, `<div class="spinner-wrap"><div class="spinner"></div><span>${msg}</span></div>`);
+}
+
 // ── Search ────────────────────────────────────────────────────────────────
 async function search() {
   const input = document.getElementById('symInput');
@@ -853,27 +883,191 @@ async function search() {
   btn.disabled = true; btn.textContent = 'Loading…';
   document.getElementById('welcome').style.display = 'none';
   document.getElementById('detail').style.display = 'block';
-  document.getElementById('detail').innerHTML = `<div class="spinner-wrap"><div class="spinner"></div><span>Analyzing ${sym}…</span></div>`;
+  document.getElementById('detail').innerHTML = `<div class="spinner-wrap"><div class="spinner"></div><span>Fetching ${sym}…</span></div>`;
 
   try {
-    let d = await loadFromFirestore(sym);
-    if (!d) {
-      const [result, fundamentals, deepResearch] = await Promise.all([fetchFromYahoo(sym), fetchFundamentalsLive(sym), fetchDeepResearchLive(sym)]);
-      d = { ...computeAnalysis(sym, result), fundamentals, deepResearch };
+    // ── Step 1: Try Firestore (pre-computed, instant) ──────────────────────
+    const [fsData, fdr] = await Promise.all([loadFromFirestore(sym), loadDeepResearchFromFirestore(sym)]);
+
+    if (fsData) {
+      // Pre-computed — show everything immediately
+      if (fdr) fsData.fullDeepResearch = fdr;
+      cache[sym] = fsData;
+      addSavedChip(fsData);
+      updateCostSummary();
+      setActive(sym);
+      renderDetail(fsData);
+      input.value = '';
+      return;
     }
-    const fdr = await loadDeepResearchFromFirestore(sym);
+
+    // ── Step 2: Live fetch — show data progressively ───────────────────────
+    // Fetch market data first (fast)
+    const [chartResult, summaryData] = await Promise.all([
+      fetchFromYahoo(sym),
+      (async () => {
+        const res = await fetch(`${WORKER}?symbol=${sym}&type=summary`);
+        return res.ok ? res.json() : null;
+      })(),
+    ]);
+
+    // Parse all Yahoo data
+    const technical = computeAnalysis(sym, chartResult);
+    const r = summaryData?.quoteSummary?.result?.[0] || null;
+
+    // Parse fundamentals inline
+    const fundamentals = (() => {
+      if (!r) return {};
+      const ks=r.defaultKeyStatistics||{}, fd=r.financialData||{}, sd=r.summaryDetail||{}, ap=r.assetProfile||{};
+      const v=(obj,key)=>obj?.[key]?.raw??obj?.[key]??null;
+      return { marketCap:v(sd,'marketCap'),trailingPE:v(sd,'trailingPE'),forwardPE:v(sd,'forwardPE'),
+        priceToBook:v(ks,'priceToBook'),eps:v(ks,'trailingEps'),epsForward:v(ks,'forwardEps'),
+        beta:v(ks,'beta'),dividendYield:v(sd,'dividendYield'),revenue:v(fd,'totalRevenue'),
+        revenueGrowth:v(fd,'revenueGrowth'),grossMargin:v(fd,'grossMargins'),
+        operatingMargin:v(fd,'operatingMargins'),profitMargin:v(fd,'profitMargins'),
+        returnOnEquity:v(fd,'returnOnEquity'),returnOnAssets:v(fd,'returnOnAssets'),
+        debtToEquity:v(fd,'debtToEquity'),freeCashflow:v(fd,'freeCashflow'),
+        currentRatio:v(fd,'currentRatio'),shortRatio:v(ks,'shortRatio'),
+        sector:ap.sector??null,industry:ap.industry??null };
+    })();
+
+    // Parse deepResearch (analyst ratings, earnings, ownership)
+    const deepResearch = (() => {
+      if (!r) return null;
+      const rt=r.recommendationTrend||{},udh=r.upgradeDowngradeHistory||{};
+      const eh=r.earningsHistory||{},ce=r.calendarEvents||{};
+      const mhb=r.majorHoldersBreakdown||{},fd=r.financialData||{},ks=r.defaultKeyStatistics||{};
+      const v=(obj,key)=>obj?.[key]?.raw??obj?.[key]??null;
+      const mean=v(fd,'recommendationMean');
+      const consensus=mean==null?'N/A':mean<=1.5?'Strong Buy':mean<=2.5?'Buy':mean<=3.5?'Hold':mean<=4.5?'Sell':'Strong Sell';
+      const trend=rt.trend?.[0]||{};
+      const actionLabels={up:'Upgraded',down:'Downgraded',init:'Initiated',main:'Maintained',reit:'Reiterated'};
+      const upgrades=(udh.history||[]).slice(0,5).map(i=>({firm:i.firm||'',action:actionLabels[i.action]||i.action||'',fromGrade:i.fromGrade||'',toGrade:i.toGrade||'',date:i.epochGradeDate?new Date(i.epochGradeDate*1000).toISOString().split('T')[0]:''}));
+      const quarters=(eh.history||[]).slice(-4).map(q=>{const surprise=q?.surprisePercent?.raw??null;const beat=surprise==null?'N/A':surprise>0.05?'Beat':surprise<-0.05?'Miss':'In-Line';return{period:q?.quarter?.fmt||'',epsActual:q?.epsActual?.raw??null,epsEstimate:q?.epsEstimate?.raw??null,surprisePct:surprise!=null?surprise*100:null,beat};});
+      const earningsDates=ce.earnings?.earningsDate||[];
+      const nextEarningsDate=earningsDates[0]?.raw?new Date(earningsDates[0].raw*1000).toISOString().split('T')[0]:null;
+      const currentPrice=v(fd,'currentPrice'),targetMean=v(fd,'targetMeanPrice'),shortFloat=v(ks,'shortPercentOfFloat');
+      const meanScore=mean!=null?Math.max(0,Math.min(40,((5-mean)/4)*40)):20;
+      const shortScore=shortFloat!=null?Math.max(0,Math.min(30,(1-shortFloat/0.20)*30)):15;
+      const beats=quarters.filter(q=>q.beat==='Beat').length,counted=quarters.filter(q=>q.beat!=='N/A').length;
+      const beatScore=counted>0?(beats/counted)*30:15;
+      const sentimentScore=Math.round(Math.max(0,Math.min(100,meanScore+shortScore+beatScore)));
+      const sentimentLabel=sentimentScore>=75?'Very Bullish':sentimentScore>=55?'Bullish':sentimentScore>=40?'Neutral':sentimentScore>=20?'Bearish':'Very Bearish';
+      return{analystRatings:{consensus,recommendationMean:mean,numberOfAnalysts:v(fd,'numberOfAnalystOpinions'),targetHigh:v(fd,'targetHighPrice'),targetLow:v(fd,'targetLowPrice'),targetMean,upsidePct:(currentPrice&&targetMean)?((targetMean-currentPrice)/currentPrice)*100:null,strongBuy:v(trend,'strongBuy'),buy:v(trend,'buy'),hold:v(trend,'hold'),sell:v(trend,'sell'),strongSell:v(trend,'strongSell')},upgrades,earnings:{nextEarningsDate,quarters},ownership:{institutionalPct:v(mhb,'institutionsPercentHeld'),insiderPct:v(mhb,'insidersPercentHeld'),shortFloatPct:shortFloat,shortRatio:v(ks,'shortRatio')},sentimentScore,sentimentLabel};
+    })();
+
+    // Build partial data object and show immediately (Technical + Fundamentals ready)
+    let d = { ...technical, fundamentals, deepResearch, isLive: true };
     if (fdr) d.fullDeepResearch = fdr;
     cache[sym] = d;
     addSavedChip(d);
-    updateCostSummary();
     setActive(sym);
-    renderDetail(d);
+
+    // Render page with Overview showing "Generating AI analysis…"
+    renderDetailLive(d, sym);
     input.value = '';
+
+    // ── Step 3: Generate live Claude narrative (async, updates Overview) ───
+    setTabLoading('overview', 'Generating AI analysis…');
+    const narrativeResult = await fetchLiveNarrative(sym, technical, fundamentals, deepResearch);
+    if (narrativeResult?.narrative) {
+      d.narrative = narrativeResult.narrative;
+      d.claudeUsage = narrativeResult.claudeUsage;
+      cache[sym] = d;
+      setTabContent('overview', renderOverview(d));
+      // Update header badges
+      const badgeRow = document.querySelector('.badge-row');
+      if (badgeRow && d.narrative?.recommendation) {
+        const existing = badgeRow.querySelector('[data-claude]');
+        if (existing) existing.outerHTML = `<span class="badge ${d.narrative.recommendation}" data-claude>Claude: ${d.narrative.recommendation}</span>`;
+        else badgeRow.insertAdjacentHTML('beforeend', `<span class="badge ${d.narrative.recommendation}" data-claude>Claude: ${d.narrative.recommendation}</span>`);
+      }
+      updateCostSummary();
+    } else {
+      setTabContent('overview', `<div class="err-msg" style="font-size:0.85rem">Could not generate AI analysis. The Worker may need the ANTHROPIC_API_KEY secret configured.</div>${renderOverviewFallback(d)}`);
+    }
+
   } catch(e) {
     document.getElementById('detail').innerHTML = `<div class="err-msg">Could not load <strong>${sym}</strong>: ${e.message}</div>`;
   } finally {
     btn.disabled = false; btn.textContent = 'Analyze';
   }
+}
+
+// Render page immediately with tabs (Overview shows spinner, rest are ready)
+function renderDetailLive(d, sym) {
+  const pos = d.price.change >= 0;
+  document.getElementById('welcome').style.display = 'none';
+  const det = document.getElementById('detail');
+  det.style.display = 'block';
+  det.innerHTML = `
+    <div class="d-header">
+      <div class="d-title-row">
+        <div>
+          <div class="d-sym">${sym}</div>
+          ${d.fundamentals?.sector ? `<div class="d-company">${d.fundamentals.sector}${d.fundamentals.industry?' · '+d.fundamentals.industry:''}</div>` : ''}
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:0.72rem;color:var(--faint);margin-bottom:4px">Live data · ${new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true})}</div>
+          <div style="font-size:0.7rem;color:var(--blue)">● Fetched from Yahoo Finance</div>
+        </div>
+      </div>
+      <div class="d-price-row">
+        <div class="d-price">$${fmt(d.price.current)}</div>
+        <div class="d-change ${pos?'pos':'neg'}">${pos?'▲':'▼'} ${fmt(Math.abs(d.price.change))} (${fmt(Math.abs(d.price.changePct))}%)</div>
+      </div>
+      <div class="badge-row">
+        <span class="badge ${d.overall}">${d.overall}</span>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-tab="overview"      onclick="switchTab('overview')">Overview</button>
+      <button class="tab"        data-tab="technical"     onclick="switchTab('technical')">Technical</button>
+      <button class="tab"        data-tab="fundamentals"  onclick="switchTab('fundamentals')">Fundamentals</button>
+      <button class="tab"        data-tab="research"      onclick="switchTab('research')">Deep Research</button>
+    </div>
+    <div id="tab-overview"     class="tab-panel active"><div class="spinner-wrap"><div class="spinner"></div><span>Generating AI analysis…</span></div></div>
+    <div id="tab-technical"    class="tab-panel">${renderTechnical(d)}</div>
+    <div id="tab-fundamentals" class="tab-panel">${renderFundamentals(d.fundamentals, d.deepResearch)}</div>
+    <div id="tab-research"     class="tab-panel">${d.fullDeepResearch ? renderDeepResearch(d.fullDeepResearch) : renderLiveDeepResearch(d)}</div>
+    <footer>Live data · Yahoo Finance · AI: Claude Sonnet 4.6 · Not financial advice</footer>
+  `;
+}
+
+// Fallback overview when Claude isn't available — show analyst consensus summary
+function renderOverviewFallback(d) {
+  const dr = d.deepResearch;
+  if (!dr) return '';
+  const ar = dr.analystRatings || {};
+  const recColor = ['Strong Buy','Buy'].includes(ar.consensus)?'var(--green)':ar.consensus==='Hold'?'var(--yellow)':'var(--red)';
+  return `
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:8px">Analyst Consensus Summary</div>
+      <div style="font-size:1.3rem;font-weight:700;color:${recColor};margin-bottom:6px">${ar.consensus||'N/A'}</div>
+      ${ar.numberOfAnalysts?`<div style="font-size:0.82rem;color:var(--muted);margin-bottom:10px">${ar.numberOfAnalysts} analysts covering ${d.symbol}</div>`:''}
+      ${ar.targetMean?`<div style="font-size:0.84rem;color:var(--muted)">Price target: <strong style="color:var(--text)">$${fmt(ar.targetMean)}</strong> avg · $${fmt(ar.targetLow)} low · $${fmt(ar.targetHigh)} high</div>`:''}
+      ${ar.upsidePct!=null?`<div style="font-size:0.84rem;margin-top:4px">Upside: <span class="${ar.upsidePct>=0?'pos':'neg'}">${ar.upsidePct>=0?'+':''}${fmt(ar.upsidePct,1)}%</span> to mean target</div>`:''}
+    </div>
+    <div style="font-size:0.8rem;color:var(--faint);padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:8px">
+      To get full AI narrative for this symbol, run: <code style="color:var(--blue)">bun run push-analysis.ts ${d.symbol}</code>
+    </div>
+  `;
+}
+
+// Deep Research tab for live symbols — show analyst data from Yahoo
+function renderLiveDeepResearch(d) {
+  const dr = d.deepResearch;
+  if (!dr) return `<div style="color:var(--faint);padding:20px">No analyst data available.</div>`;
+  return `
+    <div style="background:var(--card);border:1px solid var(--border2);border-radius:12px;padding:20px;margin-bottom:16px">
+      <div style="font-size:0.66rem;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);font-weight:700;margin-bottom:6px">Live Data · Yahoo Finance</div>
+      <div style="font-size:0.88rem;color:var(--muted);margin-bottom:16px">Full SEC EDGAR deep research is only available for pre-analyzed symbols. The analyst data below is fetched live.</div>
+      ${renderFundamentals(d.fundamentals, dr)}
+      <div style="margin-top:16px;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:0.82rem;color:var(--muted)">
+        Run <code style="color:var(--blue)">bun run deep-research.ts ${d.symbol}</code> to generate the full SEC EDGAR research report for this symbol.
+      </div>
+    </div>
+  `;
 }
 
 document.getElementById('symInput').addEventListener('keydown', e => { if(e.key==='Enter') search(); });
