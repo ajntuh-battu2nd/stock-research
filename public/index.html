@@ -793,7 +793,7 @@ function renderDetail(d) {
     <div id="tab-overview"      class="tab-panel active">${renderOverview(d)}</div>
     <div id="tab-technical"     class="tab-panel">${renderTechnical(d)}</div>
     <div id="tab-fundamentals"  class="tab-panel">${renderFundamentals(d.fundamentals, d.deepResearch)}</div>
-    <div id="tab-research"      class="tab-panel">${renderDeepResearch(d.fullDeepResearch)}</div>
+    <div id="tab-research"      class="tab-panel">${d.fullDeepResearch ? renderDeepResearch(d.fullDeepResearch) : (d.isLive ? renderLiveDeepResearch(d) : renderDeepResearch(null))}</div>
 
     <footer>Updated ${updatedAt} &nbsp;·&nbsp; Data: Yahoo Finance + SEC EDGAR &nbsp;·&nbsp; AI: Claude Sonnet 4.6 &nbsp;·&nbsp; Not financial advice</footer>
   `;
@@ -804,6 +804,17 @@ function setActive(sym) {
   activeSymbol = sym;
   document.querySelectorAll('.stock-btn').forEach(b => b.classList.toggle('active', b.dataset.sym===sym));
 }
+function showSymbol(sym) {
+  const d = cache[sym];
+  if (!d) return;
+  setActive(sym);
+  if (d.isLive && !d.narrative) {
+    renderDetailLive(d, sym);
+  } else {
+    renderDetail(d);
+  }
+}
+
 function addSavedChip(d) {
   const sym = d.symbol;
   if (document.querySelector(`.stock-btn[data-sym="${sym}"]`)) {
@@ -811,6 +822,9 @@ function addSavedChip(d) {
   }
   const pos = d.price.change >= 0;
   const dateStr = d.generatedAt ? fmtDateShort(d.generatedAt) : '';
+  const liveTag = d.narrative?.recommendation
+    ? `<div class="s-date" style="color:${d.narrative.recommendation==='BUY'?'var(--green)':d.narrative.recommendation==='SELL'?'var(--red)':'var(--yellow)'}">${d.narrative.recommendation}</div>`
+    : (d.isLive ? `<div class="s-date" style="color:var(--blue)">● Live</div>` : (dateStr ? `<div class="s-date">${dateStr}</div>` : ''));
   const btn = document.createElement('button');
   btn.className = 'stock-btn';
   btn.dataset.sym = sym;
@@ -818,9 +832,9 @@ function addSavedChip(d) {
     <div class="sym">${sym}</div>
     <div class="s-price">$${fmt(d.price.current)}</div>
     <div class="s-chg ${pos?'pos':'neg'}">${pos?'▲':'▼'} ${fmt(Math.abs(d.price.changePct))}%</div>
-    ${dateStr ? `<div class="s-date">${dateStr}</div>` : ''}
+    ${liveTag}
   `;
-  btn.onclick = () => { setActive(sym); renderDetail(cache[sym]); };
+  btn.onclick = () => showSymbol(sym);
 
   // Insert in alphabetical order
   const list = document.getElementById('stockList');
@@ -834,11 +848,14 @@ function updateChip(d) {
   if (!btn) return;
   const pos = d.price.change >= 0;
   const dateStr = d.generatedAt ? fmtDateShort(d.generatedAt) : '';
+  const recTag = d.narrative?.recommendation
+    ? `<div class="s-date" style="color:${d.narrative.recommendation==='BUY'?'var(--green)':d.narrative.recommendation==='SELL'?'var(--red)':'var(--yellow)'}">${d.narrative.recommendation}</div>`
+    : (d.isLive && !d.narrative ? `<div class="s-date" style="color:var(--blue)">● Live</div>` : (dateStr ? `<div class="s-date">${dateStr}</div>` : ''));
   btn.innerHTML = `
     <div class="sym">${d.symbol}</div>
     <div class="s-price">$${fmt(d.price.current)}</div>
     <div class="s-chg ${pos?'pos':'neg'}">${pos?'▲':'▼'} ${fmt(Math.abs(d.price.changePct))}%</div>
-    ${dateStr ? `<div class="s-date">${dateStr}</div>` : ''}
+    ${recTag}
   `;
 }
 
@@ -878,7 +895,7 @@ async function search() {
   const btn   = document.getElementById('searchBtn');
   const sym   = input.value.trim().toUpperCase();
   if (!sym) return;
-  if (cache[sym]) { setActive(sym); renderDetail(cache[sym]); input.value=''; return; }
+  if (cache[sym]) { showSymbol(sym); input.value=''; return; }
 
   btn.disabled = true; btn.textContent = 'Loading…';
   document.getElementById('welcome').style.display = 'none';
@@ -961,6 +978,7 @@ async function search() {
     if (fdr) d.fullDeepResearch = fdr;
     cache[sym] = d;
     addSavedChip(d);
+    updateCostSummary();
     setActive(sym);
 
     // Render page with Overview showing "Generating AI analysis…"
@@ -973,18 +991,22 @@ async function search() {
     if (narrativeResult?.narrative) {
       d.narrative = narrativeResult.narrative;
       d.claudeUsage = narrativeResult.claudeUsage;
+      d.isLive = true; // keep live flag
       cache[sym] = d;
+      // Update overview tab in place
       setTabContent('overview', renderOverview(d));
-      // Update header badges
+      // Update header recommendation badge
       const badgeRow = document.querySelector('.badge-row');
       if (badgeRow && d.narrative?.recommendation) {
         const existing = badgeRow.querySelector('[data-claude]');
         if (existing) existing.outerHTML = `<span class="badge ${d.narrative.recommendation}" data-claude>Claude: ${d.narrative.recommendation}</span>`;
         else badgeRow.insertAdjacentHTML('beforeend', `<span class="badge ${d.narrative.recommendation}" data-claude>Claude: ${d.narrative.recommendation}</span>`);
       }
+      // Update chip — remove "● Live" tag now that analysis is done
+      updateChip(d);
       updateCostSummary();
     } else {
-      setTabContent('overview', `<div class="err-msg" style="font-size:0.85rem">Could not generate AI analysis. The Worker may need the ANTHROPIC_API_KEY secret configured.</div>${renderOverviewFallback(d)}`);
+      setTabContent('overview', `<div class="err-msg" style="font-size:0.85rem">Could not generate AI analysis.</div>${renderOverviewFallback(d)}`);
     }
 
   } catch(e) {
@@ -1110,7 +1132,7 @@ function updateCostSummary() {
   }));
   // Show first saved that loaded
   const first = SAVED.find(s => cache[s]);
-  if (first) { setActive(first); renderDetail(cache[first]); }
+  if (first) { showSymbol(first); }
 })();
 </script>
 </body>
